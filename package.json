@@ -1,0 +1,41 @@
+{
+  "name": "mkc-arcade-kiosk",
+  "version": "0.2605.2601",
+  "private": true,
+  "description": "Self-hosted MakeCode Arcade Kiosk with native gamepad bridge",
+  "license": "MIT",
+  "author": "Greg Lamb",
+  "homepage": "https://github.com/greglamb/mkc-arcade-kiosk",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/greglamb/mkc-arcade-kiosk.git"
+  },
+  "scripts": {
+    "overrides": "./scripts/apply-overrides.sh",
+    "build": "npm run overrides && npm --prefix vendor/pxt/kiosk ci && npm --prefix vendor/pxt/kiosk run build",
+    "dev": "npm run overrides && npm --prefix vendor/pxt/kiosk start",
+    "submodule:bump": "./scripts/bump-submodule.sh",
+    "submodule:init": "git submodule update --init --recursive",
+    "test": "jest --coverage"
+  },
+  "devDependencies": {
+    "jest": "^30.0.0",
+    "jest-environment-jsdom": "^30.0.0"
+  },
+  "jest": {
+    "testEnvironment": "jsdom",
+    "testMatch": ["<rootDir>/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "overrides/**/*.js",
+      "scripts/**/*.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 75,
+        "functions": 75,
+        "lines": 75,
+        "statements": 75
+      }
+    }
+  }
+}
