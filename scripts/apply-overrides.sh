@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Idempotently copy our customizations into the pxt submodule's kiosk app
+# so that `npm run build` produces our themed/instrumented kiosk.
+#
+# This script is safe to run multiple times. It does NOT modify the submodule
+# in ways that would be staged for commit — submodule isolation handles that —
+# but we add belt-and-suspenders .gitignore entries too.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+KIOSK="$ROOT/vendor/pxt/kiosk"
+
+if [[ ! -d "$KIOSK" ]]; then
+  echo "ERROR: submodule not initialized. Run: npm run submodule:init" >&2
+  exit 1
+fi
+
+echo "==> Copying public/ overrides"
+cp -f "$ROOT/overrides/public/native-gamepad-bridge.js" "$KIOSK/public/"
+cp -f "$ROOT/overrides/public/pxt-stub.js"              "$KIOSK/public/"
+
+echo "==> Substituting %MKC_DEBUG% in pxt-stub.js"
+# %MKC_DEBUG% is a literal placeholder in the override; replace with the env
+# variable's value (default 'false'). This is the fix for SPEC §4.10's
+# "implementer must merge" callout — it lives in the single script now.
+DEBUG_VAL="${MKC_DEBUG:-false}"
+node -e "
+  const fs = require('fs');
+  const p = process.argv[1];
+  const v = process.argv[2];
+  const text = fs.readFileSync(p, 'utf8');
+  fs.writeFileSync(p, text.split('%MKC_DEBUG%').join(v));
+" "$KIOSK/public/pxt-stub.js" "$DEBUG_VAL"
+
+echo "==> Copying games.json -> kiosk public root"
+cp -f "$ROOT/overrides/games.json" "$KIOSK/public/games.json"
+
+echo "==> Patching package.json homepage for relative asset paths"
+# Setting homepage to "." makes CRA emit relative URLs in index.html and the
+# manifest, so the build works at any subpath (GitHub Pages project URL,
+# custom domain, or being loaded as a file:// URL by a native shell).
+node -e "
+  const f = '$KIOSK/package.json';
+  const p = require(f);
+  p.homepage = '.';
+  require('fs').writeFileSync(f, JSON.stringify(p, null, 2) + '\n');
+"
+
+echo "==> Injecting <script> tags into index.html (idempotent, Node-based)"
+node "$ROOT/scripts/inject-html.js" "$KIOSK/public/index.html"
+
+echo "==> Done"
