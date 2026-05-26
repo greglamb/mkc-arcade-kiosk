@@ -4,6 +4,8 @@
 **Status:** Approved (pending user review of this doc)
 **Source of truth:** `mkc-arcade-kiosk-SPEC.md` is authoritative for *what* we are building (architecture, file contents, contracts, acceptance criteria). This design doc captures *how* and *in what order* we will implement v1, the deltas relative to SPEC §5, the bugs found during the verification pass, the rejected alternatives, and the hand-off boundary.
 
+**Addenda incorporated:** `mkc-arcade-kiosk-ADDENDUM-01.md` — GitHub repo references in `games.json` (third permitted `id` format + fallback share-id guard test). Supersedes SPEC §4.12 (games.json contents), §4.13 (overrides/README.md "Adding a game" section), and §6.3 (games-json.test.js). Adds an item to SPEC §9 final validation and a risks-table extension to §7.
+
 ## 1. Scope (v1)
 
 Implement SPEC §5 steps 1–6 plus the §6 test plan. Goal: a working `npm run build` locally with a green Jest suite, ready to push.
@@ -80,7 +82,7 @@ Per file, RED-GREEN-REFACTOR:
 
 1. `tests/pxt-stub.test.js` (RED), then `overrides/public/pxt-stub.js` (GREEN per SPEC §4.10). Commit.
 2. `tests/native-gamepad-bridge.test.js` (RED), then `overrides/public/native-gamepad-bridge.js` (GREEN per SPEC §4.11). Commit.
-3. `tests/games-json.test.js` (RED), then `overrides/games.json` (GREEN per SPEC §4.12) + `overrides/README.md` (SPEC §4.13). Commit.
+3. `tests/games-json.test.js` (RED — covers all three `id` formats per ADDENDUM-01 §5 + the fallback-share-id guard), then `overrides/games.json` (GREEN per ADDENDUM-01 §2, superseding SPEC §4.12) + `overrides/README.md` (per ADDENDUM-01 §3, superseding SPEC §4.13). Commit.
 
 ### Phase D — Build scripts (SPEC §5 step 4) — with bug fixes
 

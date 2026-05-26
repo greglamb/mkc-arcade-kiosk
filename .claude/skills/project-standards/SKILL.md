@@ -137,12 +137,18 @@ The deploy is the only path to production. Don't hand-publish artifacts.
 ```
 
 Field rules:
-- `id` (string, required) — either `12345-67890-12345-67890` (20-digit share ID) or `_abcdefABCDEF` (persistent project ID, leading underscore + alphanumeric). Tested in `tests/games-json.test.js`.
+- `id` (string, required) — one of THREE formats (see `mkc-arcade-kiosk-ADDENDUM-01.md` §1 for rationale):
+  1. **20-digit share ID** — `12345-67890-12345-67890` (temporary MakeCode share)
+  2. **Persistent share ID** — `_abcdefABCDEF` (leading underscore + alphanumeric)
+  3. **GitHub repo path** — `org/repo` or `org/repo#ref` (e.g. `greglamb/elliots-game` or `greglamb/elliots-game#v1.0`); MakeCode's `---run` endpoint resolves it natively. Preferred for games we author.
+  All three formats validated by regex in `tests/games-json.test.js`.
 - `name` (string, required) — short, kid-friendly.
 - `description` (string, required) — one sentence, no marketing copy.
 - `highScoreMode` (enum, required) — `"SingleAscending"` (higher = better) or `"None"` (no scoring). Other modes exist upstream but are not supported here.
 
 Don't add fields without updating the Jest schema test.
+
+**Fallback guard:** if any entries use the GitHub repo format, `games.json` MUST also contain at least one share-ID entry as a fallback. The Jest test `contains at least one fallback share-id game` enforces this. Rationale: if MakeCode's `---run` ever drops repo-path support, or a repo gets renamed/deleted, there's still something to play. To intentionally remove the safety net, comment out the test with a note rather than deleting it.
 
 ---
 

@@ -9,6 +9,7 @@
 **License:** MIT
 **Versioning:** CalVer `0.YYMM.DDBB` (per Greg's coding standards)
 **Companion repo:** `greglamb/mkc-arcade-kiosk-tvos` (consumes the deployed URL)
+**Addenda:** [ADDENDUM-01](mkc-arcade-kiosk-ADDENDUM-01.md) — GitHub repo references in `games.json`
 
 ---
 

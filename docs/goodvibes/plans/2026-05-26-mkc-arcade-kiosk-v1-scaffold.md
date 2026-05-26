@@ -82,7 +82,6 @@ Per SPEC §4.4 plus devDependencies for the Jest test suite. The version is toda
     "test": "jest --coverage"
   },
   "devDependencies": {
-    "ajv": "^8.17.1",
     "jest": "^30.0.0",
     "jest-environment-jsdom": "^30.0.0"
   },
@@ -892,7 +891,7 @@ git commit -m "feat(overrides): add native-gamepad-bridge polyfill"
 - Create: `overrides/games.json`
 - Create: `overrides/README.md`
 
-Tests use Ajv to validate the schema (SPEC §6.3). `games.json` is a static asset, not code with behavior — so the "RED → GREEN" happens by writing the test against a non-existent file (test fails because the JSON file is missing), then creating the JSON file.
+Tests cover three permitted `id` formats — 20-digit share ID, persistent share ID, and GitHub repo path (with optional `#ref` suffix) — per ADDENDUM-01. The final test (`contains at least one fallback share-id game`) is a deliberate guard: if all share-ID-backed games are removed, this test fails and forces a conscious decision to drop the safety net.
 
 - [ ] **Step 1: Write the test**
 
@@ -903,72 +902,50 @@ Create `tests/games-json.test.js`:
 
 const fs = require('fs');
 const path = require('path');
-const Ajv = require('ajv');
 
-const SHARE_ID = /^\d{5}-\d{5}-\d{5}-\d{5}$/;
-const PERSISTENT_ID = /^_[a-zA-Z0-9]+$/;
+const gamesJson = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '..', 'overrides', 'games.json'), 'utf8')
+);
 
-const schema = {
-  type: 'object',
-  required: ['games'],
-  properties: {
-    $schema: { type: 'string' },
-    _comment: { type: 'string' },
-    games: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['id', 'name', 'description', 'highScoreMode'],
-        properties: {
-          id: { type: 'string' },
-          name: { type: 'string', minLength: 1 },
-          description: { type: 'string', minLength: 1 },
-          highScoreMode: { enum: ['SingleAscending', 'None'] },
-        },
-        additionalProperties: false,
-      },
-      minItems: 1,
-    },
-  },
-  additionalProperties: false,
-};
+// Three permitted id formats per ADDENDUM-01
+const SHARE_ID_20DIGIT = /^\d{5}-\d{5}-\d{5}-\d{5}$/;
+const SHARE_ID_PERSISTENT = /^_[a-zA-Z0-9]+$/;
+const GITHUB_REPO = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\/[a-zA-Z0-9._-]+(?:#[\w./-]+)?$/;
 
-let data;
-beforeAll(() => {
-  const text = fs.readFileSync(
-    path.join(__dirname, '..', 'overrides', 'games.json'),
-    'utf8'
-  );
-  data = JSON.parse(text);
-});
+function isValidId(id) {
+  return SHARE_ID_20DIGIT.test(id)
+      || SHARE_ID_PERSISTENT.test(id)
+      || GITHUB_REPO.test(id);
+}
 
 describe('overrides/games.json', () => {
-  test('is valid JSON', () => {
-    expect(data).toBeDefined();
+  test('has top-level games array', () => {
+    expect(Array.isArray(gamesJson.games)).toBe(true);
   });
 
-  test('matches the schema', () => {
-    const ajv = new Ajv({ allErrors: true });
-    const validate = ajv.compile(schema);
-    const ok = validate(data);
-    if (!ok) {
-      throw new Error(JSON.stringify(validate.errors, null, 2));
-    }
-    expect(ok).toBe(true);
+  test.each(gamesJson.games)('game "$name" has all required fields', (game) => {
+    expect(typeof game.id).toBe('string');
+    expect(typeof game.name).toBe('string');
+    expect(typeof game.description).toBe('string');
+    expect(typeof game.highScoreMode).toBe('string');
   });
 
-  test('every game id matches the share-ID or persistent-ID pattern', () => {
-    for (const g of data.games) {
-      const matchesShare = SHARE_ID.test(g.id);
-      const matchesPersistent = PERSISTENT_ID.test(g.id);
-      expect(matchesShare || matchesPersistent).toBe(true);
-    }
+  test.each(gamesJson.games)('game "$name" has valid highScoreMode', (game) => {
+    expect(['SingleAscending', 'None']).toContain(game.highScoreMode);
   });
 
-  test('every highScoreMode is in the allowed enum', () => {
-    for (const g of data.games) {
-      expect(['SingleAscending', 'None']).toContain(g.highScoreMode);
-    }
+  test.each(gamesJson.games)('game "$name" has valid id format', (game) => {
+    expect(isValidId(game.id)).toBe(true);
+  });
+
+  test('contains at least one fallback share-id game', () => {
+    // Belt-and-suspenders: ensure if all GitHub-backed games break,
+    // there's still SOMETHING to play. If you intentionally want to disable
+    // this guard, comment it out with a note — don't just delete it.
+    const hasShareId = gamesJson.games.some(g =>
+      SHARE_ID_20DIGIT.test(g.id) || SHARE_ID_PERSISTENT.test(g.id)
+    );
+    expect(hasShareId).toBe(true);
   });
 });
 ```
@@ -978,13 +955,20 @@ describe('overrides/games.json', () => {
 Run: `npx jest tests/games-json.test.js`
 Expected: FAIL — `overrides/games.json` does not exist (`ENOENT`).
 
-- [ ] **Step 3: Create `overrides/games.json` per SPEC §4.12**
+- [ ] **Step 3: Create `overrides/games.json` per ADDENDUM-01 §2**
+
+Hybrid pattern: one GitHub repo placeholder (to be replaced with Elliot's actual repo) plus four working share-ID fallbacks. If Elliot's authored games ever fail to load, he still has games to play.
 
 ```json
 {
-  "$schema": "./games.schema.json",
-  "_comment": "Example starter list. Replace with your son's games. Get game IDs by opening a game on arcade.makecode.com, clicking Share, publishing, and copying the ID from the URL (the 20-digit XXXXX-XXXXX-XXXXX-XXXXX format or the _abcdef persistent ID).",
+  "_comment": "Game list for the MakeCode Arcade Kiosk. Three id formats supported: (1) 20-digit share id e.g. '50225-04801-24334-14778', (2) persistent share id e.g. '_aBcDeF', (3) GitHub repo path e.g. 'greglamb/elliots-game' optionally with #ref suffix like 'greglamb/elliots-game#v1.0'. Replace the placeholder entries with Elliot's actual GitHub repos.",
   "games": [
+    {
+      "id": "greglamb/REPLACE-WITH-ELLIOTS-GAME-REPO",
+      "name": "Elliot's Game (placeholder)",
+      "description": "Replace this entry with one of Elliot's actual game repos",
+      "highScoreMode": "SingleAscending"
+    },
     {
       "id": "50225-04801-24334-14778",
       "name": "Space Destroyer",
@@ -1004,18 +988,6 @@ Expected: FAIL — `overrides/games.json` does not exist (`ENOENT`).
       "highScoreMode": "SingleAscending"
     },
     {
-      "id": "19410-44885-95661-59850",
-      "name": "Save the Forest",
-      "description": "Fly your plane over the forest spraying water to put out the fires!",
-      "highScoreMode": "SingleAscending"
-    },
-    {
-      "id": "91782-54072-13194-99228",
-      "name": "Caterpillar",
-      "description": "Eat the leaves to grow, but watch out for walls!",
-      "highScoreMode": "SingleAscending"
-    },
-    {
       "id": "96744-30917-11312-43375",
       "name": "Falling Duck",
       "description": "Fly through the sky avoiding obstacles",
@@ -1025,7 +997,7 @@ Expected: FAIL — `overrides/games.json` does not exist (`ENOENT`).
 }
 ```
 
-- [ ] **Step 4: Create `overrides/README.md` per SPEC §4.13**
+- [ ] **Step 4: Create `overrides/README.md` per ADDENDUM-01 §3**
 
 ```markdown
 # overrides/
@@ -1043,21 +1015,55 @@ the submodule is bumped.
 
 ## Adding a game
 
+You have two options.
+
+### Option A: From a GitHub-synced game (preferred for our games)
+
+1. In MakeCode Arcade, open the game and use the GitHub icon to sync to a repo
+2. The repo is public on GitHub (e.g., `greglamb/elliots-space-game`)
+3. Add an entry to `games.json` using the repo path as the `id`:
+
+   ```json
+   {
+     "id": "greglamb/elliots-space-game",
+     "name": "Elliot's Space Adventure",
+     "description": "Elliot's first game",
+     "highScoreMode": "SingleAscending"
+   }
+   ```
+
+4. Optionally pin to a tag or branch: `"id": "greglamb/elliots-space-game#v1.0"`.
+   Without a suffix, the kiosk fetches the latest commit on the default branch
+   every time the game is launched.
+
+5. Commit and push `games.json`. The Pages workflow rebuilds automatically.
+
+### Option B: From a share link (for community games or one-offs)
+
 1. Open the game on [arcade.makecode.com](https://arcade.makecode.com)
 2. Click **Share**, give it a title, click **Share Project**
-3. Copy the share ID from the URL (after `arcade.makecode.com/`)
+3. Copy the share ID from the URL (after `arcade.makecode.com/`):
+   - 20-digit format: `12345-67890-12345-67890`
+   - Persistent format: `_aBcDeF`
 4. Add an entry to `games.json`:
 
-```json
-{
-  "id": "12345-67890-12345-67890",
-  "name": "Display name",
-  "description": "One-sentence description",
-  "highScoreMode": "SingleAscending"
-}
-```
+   ```json
+   {
+     "id": "12345-67890-12345-67890",
+     "name": "Display name",
+     "description": "One-sentence description",
+     "highScoreMode": "SingleAscending"
+   }
+   ```
 
-5. Commit and push. The Pages workflow rebuilds automatically.
+5. Commit and push.
+
+### Choosing between A and B
+
+- **Use A (GitHub repo)** if the game is one you can edit. The kiosk always
+  loads the latest version. No need to re-share after every change.
+- **Use B (share ID)** if the game is one you can't or don't want to track
+  in your own repos (community games, MakeCode defaults).
 
 ## Removing a game
 
@@ -1067,13 +1073,20 @@ Just remove its entry from `games.json` and push.
 - [ ] **Step 5: Run the tests, expect green**
 
 Run: `npx jest tests/games-json.test.js`
-Expected: PASS for all four tests.
+Expected: PASS for all tests. With 5 games, expect:
+- 1 × "has top-level games array"
+- 5 × "has all required fields" (one per game via `test.each`)
+- 5 × "has valid highScoreMode"
+- 5 × "has valid id format"
+- 1 × "contains at least one fallback share-id game"
+
+Total: 17 passing tests.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add tests/games-json.test.js overrides/games.json overrides/README.md
-git commit -m "feat(overrides): add games.json starter list and schema tests"
+git commit -m "feat(overrides): add games.json with hybrid id formats"
 ```
 
 ---
