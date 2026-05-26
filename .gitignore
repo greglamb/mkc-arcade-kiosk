@@ -146,3 +146,11 @@ vite.config.ts.timestamp-*
 .worktrees
 _gitignored
 _reference
+
+# Build artifacts inside the submodule (defensive — submodule isolation
+# already prevents these from being committed, but be explicit)
+vendor/pxt/kiosk/build/
+vendor/pxt/kiosk/node_modules/
+vendor/pxt/kiosk/public/native-gamepad-bridge.js
+vendor/pxt/kiosk/public/pxt-stub.js
+vendor/pxt/kiosk/public/games.json
