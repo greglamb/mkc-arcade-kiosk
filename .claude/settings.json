@@ -1,0 +1,20 @@
+{
+  "enabledPlugins": {
+    "goodvibes@claude-gcode-tools": true,
+    "episodic-memory@superpowers-marketplace": true
+  },
+  "extraKnownMarketplaces": {
+    "claude-gcode-tools": {
+      "source": {
+        "source": "github",
+        "repo": "greglamb/claude-gcode-tools"
+      }
+    },
+    "superpowers-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "obra/superpowers-marketplace"
+      }
+    }
+  }
+}
