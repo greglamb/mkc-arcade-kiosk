@@ -9,14 +9,16 @@
 // In a regular browser without a native shell, this script no-ops in the
 // main frame and the real Gamepad API works as usual.
 //
-// Architecture:
-//   - Main frame:  receives gamepad state from native via
-//                  `window.__nativeGamepadUpdate(payload)`, updates local
-//                  polyfilled `navigator.getGamepads()`, AND forwards the
-//                  payload to every child iframe via postMessage.
-//   - Sub-frames:  listen for the parent's postMessage and update their own
-//                  polyfilled `navigator.getGamepads()`. The MakeCode
-//                  simulator polls getGamepads() and sees the state.
+// Architecture (recursive — handles arbitrary iframe nesting depth):
+//   Native pushes via `window.__nativeGamepadUpdate(payload)` to main frame
+//     → main frame applies update locally, postMessages to its iframes
+//     → each iframe applies update locally, postMessages to ITS iframes
+//     → recurse until leaf frames
+//
+// The MakeCode Arcade simulator is a TWO-LEVEL iframe nest
+// (parent → arcade.makecode.com → trg-arcade.userpxt.io), so recursive
+// fanout is required — direct-children-only fanout would never reach the
+// actual game runtime.
 //
 // Load order: this MUST load before the CRA bundle in the main frame because
 // Kiosk's GamepadManager.initialize() calls getGamepads() once at startup.
@@ -99,27 +101,77 @@
     }
   }
 
+  // W3C button index → keyboard event mapping. Source: `kiosk/src/config.json`
+  // VirtualGamepadMaps[0]. The pxt simulator inside the deepest iframe listens
+  // for keyboard events on window/document, not gamepad input, so sub-frames
+  // synthesize key events from the polyfilled pad state.
+  var BUTTON_KEYS = {
+    0:  { key: ' ',          code: 'Space',      keyCode: 32 },  // A
+    1:  { key: 'Enter',      code: 'Enter',      keyCode: 13 },  // B
+    8:  { key: 'Escape',     code: 'Escape',     keyCode: 27 },  // Back
+    9:  { key: '2',          code: 'Digit2',     keyCode: 50 },  // Start
+    12: { key: 'ArrowUp',    code: 'ArrowUp',    keyCode: 38 },
+    13: { key: 'ArrowDown',  code: 'ArrowDown',  keyCode: 40 },
+    14: { key: 'ArrowLeft',  code: 'ArrowLeft',  keyCode: 37 },
+    15: { key: 'ArrowRight', code: 'ArrowRight', keyCode: 39 },
+  };
+
+  var prevPressed = new Array(17).fill(false);
+
+  function fireKey(type, mapping) {
+    var ev = new KeyboardEvent(type, {
+      key: mapping.key,
+      code: mapping.code,
+      keyCode: mapping.keyCode,
+      which: mapping.keyCode,
+      bubbles: true,
+      cancelable: true,
+    });
+    // Dispatch on document only — KeyboardEvent bubbles, so window listeners
+    // still see it. Firing on both caused window handlers to run twice.
+    try { document.dispatchEvent(ev); } catch (e) { /* ignore */ }
+  }
+
+  function syncKeysFromPad(pad) {
+    for (var i = 0; i < 17; i++) {
+      var mapping = BUTTON_KEYS[i];
+      if (!mapping) continue;
+      var nowPressed = pad ? pad.buttons[i].pressed : false;
+      if (nowPressed && !prevPressed[i]) {
+        fireKey('keydown', mapping);
+      } else if (!nowPressed && prevPressed[i]) {
+        fireKey('keyup', mapping);
+      }
+      prevPressed[i] = nowPressed;
+    }
+  }
+
+  // Forward an update to every child iframe (called from both the main frame
+  // and every sub-frame to support recursive nesting).
+  function forwardToChildren(incoming) {
+    var iframes = document.querySelectorAll('iframe');
+    for (var j = 0; j < iframes.length; j++) {
+      try {
+        iframes[j].contentWindow.postMessage(
+          { tag: POSTMSG_TAG, payload: incoming },
+          '*'
+        );
+      } catch (e) { /* iframe not yet loaded; safe to ignore */ }
+    }
+  }
+
   // Polyfill `navigator.getGamepads()` in every frame.
   navigator.getGamepads = function () { return pads; };
 
   if (isMainFrame) {
     console.log('[native-gamepad-bridge] main frame: installing (native shell detected)');
 
-    // Native pushes state here. We update locally AND fan out to iframes via
-    // postMessage so they can update their own polyfilled getGamepads().
+    // Native pushes state here. Apply locally then propagate to children.
     window.__nativeGamepadUpdate = function (payload) {
       try {
         var incoming = typeof payload === 'string' ? JSON.parse(payload) : payload;
         applyUpdate(incoming);
-        var iframes = document.querySelectorAll('iframe');
-        for (var j = 0; j < iframes.length; j++) {
-          try {
-            iframes[j].contentWindow.postMessage(
-              { tag: POSTMSG_TAG, payload: incoming },
-              '*'
-            );
-          } catch (e) { /* iframe not yet loaded; safe to ignore */ }
-        }
+        forwardToChildren(incoming);
       } catch (e) {
         console.error('[native-gamepad-bridge] update failed:', e);
       }
@@ -134,10 +186,54 @@
   } else {
     console.log('[native-gamepad-bridge] iframe: listening for parent updates');
 
-    // Sub-frame: receive state from the parent's postMessage fanout.
+    // Hide the makecode editor wrapper's Safari-specific "Unmute simulator"
+    // overlay button. We auto-unmute pxsim below, so the user never needs to
+    // click it — leaving it visible just shows a confusing red speaker-with-X
+    // over the game.
+    try {
+      var hideStyle = document.createElement('style');
+      hideStyle.textContent = '#safari-mute-button-outer { display: none !important; }';
+      (document.head || document.documentElement).appendChild(hideStyle);
+    } catch (e) { /* document not ready yet — rare in user-script injection */ }
+
+    // The arcade.makecode.com editor mutes the pxt simulator by default (for
+    // browser autoplay-policy compliance). pxsim.mute(false) is idempotent and
+    // internally calls ctx.resume() on the audio context. We also notify the
+    // parent so its mute-button UI updates — pxsim only fires
+    // setParentMuteState on its own transitions, not when we flip the flag
+    // externally. Returns true once unmuted, used to stop the poll interval.
+    function tryUnmutePxsim() {
+      try {
+        if (typeof pxsim === 'undefined' || !pxsim.AudioContextManager) return false;
+        if (pxsim.AudioContextManager.isMuted && !pxsim.AudioContextManager.isMuted()) return true;
+        pxsim.AudioContextManager.mute(false);
+        if (pxsim.setParentMuteState) pxsim.setParentMuteState('unmuted');
+        return true;
+      } catch (e) { return false; }
+    }
+
+    // Poll for pxsim every 250ms — it loads lazily after our document_start
+    // polyfill runs. Stop when unmuted, or after 30 seconds for frames that
+    // never host pxsim (e.g. the makecode wrapper itself).
+    var unmuteInterval = setInterval(function () {
+      if (tryUnmutePxsim()) { clearInterval(unmuteInterval); }
+    }, 250);
+    setTimeout(function () { clearInterval(unmuteInterval); }, 30000);
+
+    // Sub-frame: apply parent's update locally, synthesize keyboard events for
+    // the pxt simulator running here, forward to our own iframes (recurse —
+    // handles nested simulators like MakeCode's pxt → userpxt), and try to
+    // unmute pxsim opportunistically.
+    //
+    // Main frame does NOT synthesize keys — the kiosk's GamepadManager already
+    // polls navigator.getGamepads() and dispatches its own synthetic keys for
+    // carousel navigation. Doubling up would cause spurious inputs.
     window.addEventListener('message', function (e) {
       if (e.data && e.data.tag === POSTMSG_TAG && e.data.payload) {
         applyUpdate(e.data.payload);
+        syncKeysFromPad(pads[0]);
+        forwardToChildren(e.data.payload);
+        tryUnmutePxsim();
       }
     });
   }
