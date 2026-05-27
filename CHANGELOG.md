@@ -14,6 +14,8 @@ the full rules.
 
 ### Added
 
+- Starfox (from `gigglyparrot/starfox`) replaces the placeholder slot in the carousel.
+
 ### Changed
 
 ### Fixed
