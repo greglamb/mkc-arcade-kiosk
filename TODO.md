@@ -18,6 +18,9 @@
 
 <!-- Ideas worth considering, no commitment. Lowest priority. -->
 
+- [2026-05-26] Promote three project-standards findings (deferred until v1 T17/T18 ship green)
+  Detail: From the kiosk-source-overrides brainstorm (design doc `docs/goodvibes/specs/2026-05-26-kiosk-source-overrides-design.md` §14). Three candidates: (1) post-Dependabot-bump check that greps `kiosk/src/` for new `pxt.*` symbols and verifies they're in `overrides/src/pxt.d.ts` + `overrides/public/pxt-stub.js`, (2) note that the `pxt` global is a load-bearing TS ambient (not just a runtime stub), (3) Node 22 fail-fast as a confirmed property of `apply-overrides.sh` (not aspirational). Trigger: revisit after the kiosk-source-overrides implementation lands and T17/T18 are green. Decision (user, 2026-05-26): defer to avoid churning project-standards before the design has been exercised end-to-end.
+
 ## Known Limitations
 
 <!-- Intentional scope reductions documented for users. These are features we've chosen not to build. -->
