@@ -40,11 +40,17 @@ jobs:
         run: npm ci
 
       - name: Stage react family at vendor/pxt root
-        # Upstream pxt's monorepo expects react+react-dom to live at the
-        # vendor/pxt/ root, not in kiosk/node_modules. kiosk's package.json
-        # references @types/react via file:../node_modules/@types/react.
-        # --ignore-scripts dodges the leveldown native-compile failure that
-        # would otherwise sink the install. See TODO Tech Debt #3 history.
+        # Upstream pxt's monorepo expects react+react-dom+@types to live at
+        # vendor/pxt/node_modules. The kiosk's `tsconfig.paths.json` aliases
+        # `react/*` and `react-dom/*` to `../node_modules/...` (relative to
+        # kiosk/), and `react-app-alias-ex` propagates those aliases to
+        # webpack — so EVERY `import "react"` in the bundle (kiosk source AND
+        # react-common's components) resolves to vendor/pxt/node_modules/react.
+        # That's the single-React-instance discipline. Without it (or without
+        # the aliases pointing here), kiosk imports its transitive 18.2.0
+        # while react-common imports vendor/pxt's — two physical React copies,
+        # producing a runtime "useReducer is null" error.
+        # --ignore-scripts dodges leveldown's native-compile failure.
         working-directory: vendor/pxt
         run: |
           npm install --no-save --no-audit --no-fund --no-package-lock \
