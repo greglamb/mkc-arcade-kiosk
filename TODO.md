@@ -4,15 +4,14 @@
 
 <!-- Actively queued work. Items here should be ready to start. -->
 
-- [2026-05-26] Implementation: kiosk source overrides (v1 plan extension)
-  Detail: Design landed at `docs/goodvibes/specs/2026-05-26-kiosk-source-overrides-design.md` (commit `75c3ecb`). Plan landed at `docs/goodvibes/plans/2026-05-26-kiosk-source-overrides.md` (commit `954a3c3`) — 6 tasks of 2–5 minutes each, strict TDD per task. Next: invoke `goodvibes:executing-plans` to walk Task 1 → Task 6. Once green, resume v1 T17 → T18. Folds in Tech Debt #2 and #3 (see below — they'll close when this lands).
+- [2026-05-26] Resume v1 plan T17 (local build validation)
+  Detail: Kiosk-source-overrides extension shipped (commits `8445470` through `14c6886`) — 89/89 tests pass, idempotency verified, both copy steps and Node-22 gate landed. Tech Debt #2 and #3 are CLOSED by this work. Next: `nvm use && ./scripts/apply-overrides.sh && cd vendor/pxt/kiosk && npm ci && CI=false npm run build`. Design risk table predicts 1–3 additional `pxt.*` symbols may surface as TS2304/TS2339 — extend `overrides/src/pxt.d.ts` + `overrides/public/pxt-stub.js` in lockstep, re-run, repeat until clean. Then T18 (full Jest with coverage ≥75%).
 
 ## Blocked
 
 <!-- Waiting on external dependency, decision, or other block. Each entry should name what's blocking it. -->
 
-- [2026-05-26] v1 plan T17 (local build validation) and T18 (full Jest suite)
-  Blocker: requires the kiosk source overrides implementation (see "Next Up"). Design is approved; the plan + execution still to come. Once T17 builds clean and T18 hits ≥75% coverage, both unblock.
+<!-- T17/T18 are no longer blocked — extension shipped 2026-05-26. See Next Up. -->
 
 ## Someday/Maybe
 
