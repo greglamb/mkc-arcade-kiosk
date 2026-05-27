@@ -58,6 +58,9 @@ cp -f "$ROOT/overrides/src/pxt.d.ts"  "$KIOSK/src/pxt.d.ts"
 echo "==> Copying src/State/State.ts override (locks Add-your-game button off)"
 cp -f "$ROOT/overrides/src/State/State.ts" "$KIOSK/src/State/State.ts"
 
+echo "==> Copying src/State/AppStateContext.tsx override (default locked=true)"
+cp -f "$ROOT/overrides/src/State/AppStateContext.tsx" "$KIOSK/src/State/AppStateContext.tsx"
+
 echo "==> Copying tsconfig.paths.json override (pins single React instance)"
 cp -f "$ROOT/overrides/tsconfig.paths.json" "$KIOSK/tsconfig.paths.json"
 

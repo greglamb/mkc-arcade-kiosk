@@ -53,6 +53,10 @@ function makeFakeRoot() {
     path.join(root, 'overrides', 'src', 'State', 'State.ts')
   );
   fs.copyFileSync(
+    path.join(ROOT_REAL, 'overrides', 'src', 'State', 'AppStateContext.tsx'),
+    path.join(root, 'overrides', 'src', 'State', 'AppStateContext.tsx')
+  );
+  fs.copyFileSync(
     path.join(ROOT_REAL, 'scripts', 'apply-overrides.sh'),
     path.join(root, 'scripts', 'apply-overrides.sh')
   );
@@ -272,6 +276,30 @@ describe('Source-tree override copy steps', () => {
     expect(text).not.toMatch(/locked:\s*false/);
   });
 
+  test('copies overrides/src/State/AppStateContext.tsx to vendor/pxt/kiosk/src/State/AppStateContext.tsx', () => {
+    const root = makeFakeRoot();
+    runScript(root);
+    const dest = path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'State', 'AppStateContext.tsx');
+    const src = path.join(ROOT_REAL, 'overrides', 'src', 'State', 'AppStateContext.tsx');
+    expect(fs.existsSync(dest)).toBe(true);
+    expect(fs.readFileSync(dest, 'utf8')).toBe(fs.readFileSync(src, 'utf8'));
+  });
+
+  test('AppStateContext override defaults locked to true (URL ?locked=0 unlocks)', () => {
+    const text = fs.readFileSync(
+      path.join(ROOT_REAL, 'overrides', 'src', 'State', 'AppStateContext.tsx'),
+      'utf8'
+    );
+    // Strip comments before checking: the override docs the original
+    // upstream pattern in a comment, which would otherwise trip up the
+    // negative assertion below.
+    const code = text.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    // Inverted regex: matches `?locked=0` to UNLOCK; default is true.
+    expect(code).toMatch(/const\s+locked\s*=\s*!\/locke\?d\?\(\?:\[:=\]\)0\/i\.test\(url\)/);
+    // Make sure the original upstream pattern (default-false) isn't active.
+    expect(code).not.toMatch(/const\s+locked\s*=\s*!!\/locke\?d\?\(\?:\[:=\]\)1\/i\.test\(url\)/);
+  });
+
   test('is idempotent for the new copy steps (second run is a no-op)', () => {
     const root = makeFakeRoot();
     runScript(root);
@@ -296,6 +324,7 @@ describe('.gitignore', () => {
     'vendor/pxt/kiosk/src/index.tsx',
     'vendor/pxt/kiosk/src/pxt.d.ts',
     'vendor/pxt/kiosk/src/State/State.ts',
+    'vendor/pxt/kiosk/src/State/AppStateContext.tsx',
     'vendor/pxt/kiosk/tsconfig.paths.json',
   ])('ignores submodule destination %s', (entry) => {
     expect(text).toContain(entry);
