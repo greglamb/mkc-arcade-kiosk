@@ -131,4 +131,49 @@ describe('pxt-stub', () => {
       expect(window.pxt.Utils.escapeForRegex('a.b*c')).toBe('a\\.b\\*c');
     });
   });
+
+  describe('DEBUG mode (?mkcDebug=1)', () => {
+    test('exposes stats at window.__pxtStubStats when URL has ?mkcDebug=1', () => {
+      window.history.replaceState({}, '', '/?mkcDebug=1');
+      loadStub();
+      expect(window.__pxtStubStats).toBeDefined();
+      expect(window.__pxtStubStats.tickEventCount).toBe(0);
+      window.pxt.tickEvent('foo.bar');
+      expect(window.__pxtStubStats.tickEventCount).toBe(1);
+      expect(window.__pxtStubStats.eventsByName['foo.bar']).toBe(1);
+    });
+
+    test('debug() and log() forward to console when DEBUG=true', () => {
+      window.history.replaceState({}, '', '/?mkcDebug=1');
+      const dbgSpy = jest.spyOn(console, 'debug').mockImplementation(() => {});
+      const logSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+      loadStub();
+      window.pxt.debug('hello');
+      window.pxt.log('world');
+      expect(dbgSpy).toHaveBeenCalledWith('hello');
+      expect(logSpy).toHaveBeenCalledWith('world');
+      dbgSpy.mockRestore();
+      logSpy.mockRestore();
+    });
+  });
+
+  describe('lf() localization helper', () => {
+    test('returns the template when no placeholders', () => {
+      loadStub();
+      expect(window.lf('plain text')).toBe('plain text');
+    });
+
+    test('interpolates {N} placeholders with arguments', () => {
+      loadStub();
+      expect(window.lf('hello {0}', 'world')).toBe('hello world');
+      expect(window.lf('{1} then {0}', 'A', 'B')).toBe('B then A');
+    });
+
+    test('replaces missing or null arguments with empty string', () => {
+      loadStub();
+      expect(window.lf('x{0}y', null)).toBe('xy');
+      expect(window.lf('x{0}y', undefined)).toBe('xy');
+      expect(window.lf('x{0}y')).toBe('xy');
+    });
+  });
 });
