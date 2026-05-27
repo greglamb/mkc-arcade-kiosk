@@ -7,7 +7,9 @@
 // dependency.
 //
 // Load order matters: pxt-stub.js must come before native-gamepad-bridge.js,
-// and both must come before the CRA bundle.
+// and all three must come before the CRA bundle. native-gamepad-test-helpers
+// loads last because its functions call window.__nativeGamepadUpdate which is
+// installed by the bridge.
 
 const fs = require('fs');
 
@@ -17,6 +19,7 @@ const INJECTION = [
   '    ' + MARKER,
   '    <script src="%PUBLIC_URL%/pxt-stub.js"></script>',
   '    <script src="%PUBLIC_URL%/native-gamepad-bridge.js"></script>',
+  '    <script src="%PUBLIC_URL%/native-gamepad-test-helpers.js"></script>',
   '  ',
 ].join('\n');
 
