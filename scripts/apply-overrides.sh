@@ -64,6 +64,17 @@ cp -f "$ROOT/overrides/src/State/AppStateContext.tsx" "$KIOSK/src/State/AppState
 echo "==> Copying tsconfig.paths.json override (pins single React instance)"
 cp -f "$ROOT/overrides/tsconfig.paths.json" "$KIOSK/tsconfig.paths.json"
 
+echo "==> Patching config.json GamepadPollLoopMilli (50ms -> 16ms for ~60Hz input)"
+# At the kiosk default of 50ms the worst-case button-press latency is ~50ms,
+# which feels sluggish on a fast game controller. 16ms aligns with a 60Hz
+# display refresh and matches what browser games typically poll at.
+node -e "
+  const f = '$KIOSK/src/config.json';
+  const c = require(f);
+  c.GamepadPollLoopMilli = 16;
+  require('fs').writeFileSync(f, JSON.stringify(c, null, 4) + '\n');
+"
+
 echo "==> Patching package.json homepage for relative asset paths"
 # Setting homepage to "." makes CRA emit relative URLs in index.html and the
 # manifest, so the build works at any subpath (GitHub Pages project URL,
