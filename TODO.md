@@ -5,7 +5,7 @@
 <!-- Actively queued work. Items here should be ready to start. -->
 
 - [2026-05-26] Implementation: kiosk source overrides (v1 plan extension)
-  Detail: Design landed at `docs/goodvibes/specs/2026-05-26-kiosk-source-overrides-design.md` (commit `75c3ecb`). Next: invoke `goodvibes:writing-plans` to produce a 5–7 task TDD plan covering (a) `overrides/src/index.tsx` (no-telemetry bootstrap), (b) `overrides/src/pxt.d.ts` (ambient declarations), (c) `overrides/tsconfig.paths.json` (drop absent react aliases), (d) `overrides/public/pxt-stub.js` extension (`BrowserUtils.isLocalHost` + `Utils.*`), (e) `scripts/apply-overrides.sh` (Node 22 fail-fast + 3 new copy steps), (f) `.gitignore` (3 new entries). Once green, resume v1 T17 → T18. Folds in Tech Debt #2 and #3 (see below — they'll close when this lands).
+  Detail: Design landed at `docs/goodvibes/specs/2026-05-26-kiosk-source-overrides-design.md` (commit `75c3ecb`). Plan landed at `docs/goodvibes/plans/2026-05-26-kiosk-source-overrides.md` (commit `954a3c3`) — 6 tasks of 2–5 minutes each, strict TDD per task. Next: invoke `goodvibes:executing-plans` to walk Task 1 → Task 6. Once green, resume v1 T17 → T18. Folds in Tech Debt #2 and #3 (see below — they'll close when this lands).
 
 ## Blocked
 
