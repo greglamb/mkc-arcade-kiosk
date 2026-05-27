@@ -18,6 +18,8 @@ the full rules.
 
 ### Fixed
 
+- Gamepad input now reaches games running in the simulator iframe when the kiosk is loaded inside a native shell (e.g., the `mkc-arcade-kiosk-tvos` Apple TV app). The bridge previously polyfilled `navigator.getGamepads()` only on the parent kiosk page, so controller input drove the carousel but went dead the moment a game launched. It now installs in every frame and the parent forwards updates to the iframe via `postMessage`.
+
 ### Removed
 
 - The "Add your game" button on the carousel — the kiosk is admin-curated via `overrides/games.json` and players don't add their own games at runtime.
