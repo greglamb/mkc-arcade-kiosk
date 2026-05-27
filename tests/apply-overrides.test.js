@@ -21,6 +21,15 @@ function makeFakeRoot() {
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'public'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'State'), { recursive: true });
+
+  // Seed an empty config.json so apply-overrides.sh's `node -e "require(...)"`
+  // gamepad-timing patch step has something to read. Real submodule ships
+  // this file; the fake root doesn't, so we provide an empty object that the
+  // patch step can populate with the three timing fields it assigns.
+  fs.writeFileSync(
+    path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'config.json'),
+    '{}\n'
+  );
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
 
   // Copy override sources from the real repo.
@@ -298,6 +307,21 @@ describe('Source-tree override copy steps', () => {
     expect(code).toMatch(/const\s+locked\s*=\s*!\/locke\?d\?\(\?:\[:=\]\)0\/i\.test\(url\)/);
     // Make sure the original upstream pattern (default-false) isn't active.
     expect(code).not.toMatch(/const\s+locked\s*=\s*!!\/locke\?d\?\(\?:\[:=\]\)1\/i\.test\(url\)/);
+  });
+
+  test('patches kiosk/src/config.json with tightened gamepad timings', () => {
+    const root = makeFakeRoot();
+    runScript(root);
+    const cfg = JSON.parse(
+      fs.readFileSync(
+        path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'config.json'),
+        'utf8'
+      )
+    );
+    // Defaults felt sluggish; tuned for native-controller responsiveness.
+    expect(cfg.GamepadPollLoopMilli).toBe(16);        // was 50
+    expect(cfg.GamepadOnDownCooldownMilli).toBe(150); // was 250
+    expect(cfg.GamepadOnHeldCooldownMilli).toBe(80);  // was 167
   });
 
   test('is idempotent for the new copy steps (second run is a no-op)', () => {
