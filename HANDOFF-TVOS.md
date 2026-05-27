@@ -1,7 +1,7 @@
 # HANDOFF-TVOS — context from the native shell side
 
 **Date:** 2026-05-27
-**Status:** ✅ **RESOLVED — kept as a historical record.** The cross-repo work documented below shipped. The polyfill in `overrides/public/native-gamepad-bridge.js` now has recursive postMessage fanout, gamepad→keyboard event synthesis in sub-frames, automatic pxsim unmuting, and the `#safari-mute-button-outer` overlay is suppressed. Console test helpers (`a()`, `b()`, `right(500)`, `axes(...)`, `seq(...)`) ship in `overrides/public/native-gamepad-test-helpers.js`.
+**Status:** ✅ **RESOLVED — kept as a historical record.** The cross-repo work documented below shipped. See §3 for the complete list of what's now in place — polyfill (frame-aware + recursive fanout + sub-frame keyboard synthesis + left-stick → arrow keys), audio (auto-unmute + overlay suppression), carousel responsiveness (16 ms poll, 150 ms initial-press cooldown, 80 ms held-repeat cooldown), and console test helpers.
 
 **Audience:** the agent working in `mkc-arcade-kiosk` (the web kiosk repo)
 **From:** the agent working in `mkc-arcade-kiosk-tvos` (the native tvOS shell that loads this kiosk)
@@ -48,20 +48,20 @@ That last step is what's mid-implementation as of this handoff.
 
 ---
 
-## 3. Recent commits in this repo (and why)
+## 3. What ultimately shipped
 
-| Commit | Why |
-|---|---|
-| `2222c8c fix(overrides): make gamepad bridge frame-aware for iframe simulators` | First-pass frame awareness — the polyfill checks `window === window.top` and behaves differently in main vs sub-frames |
-| `0a1bbe1 docs(changelog): note iframe gamepad fix` | CHANGELOG entry for above |
+All of the following are now committed and live on `main`:
 
-### Uncommitted right now (the in-flight change)
+- **Frame-aware polyfill** (`2222c8c`) — first cut, distinguishes main frame vs sub-frame behavior via `window === window.top`.
+- **Recursive postMessage fanout** — every frame forwards parent updates to its own iframes, not just the main frame. Required because the pxt simulator nests two iframes deep.
+- **Gamepad → keyboard event synthesis (sub-frame only)** — the pxt simulator listens for keyboard events, not `navigator.getGamepads()`, so the deepest iframe synthesizes `keydown`/`keyup` for each W3C-button transition (button-to-key map in §4).
+- **Left analog stick → direction keys** — `pad.axes[0]` and `pad.axes[1]` past a 0.5 deadzone OR with the D-pad buttons so the stick fires the same Arrow keys.
+- **Automatic pxsim unmute** — the makecode editor mutes the simulator by default for autoplay compliance; the iframe-side polyfill flips it back via `pxsim.AudioContextManager.mute(false)`. Also calls `setParentMuteState('unmuted')` so the wrapper UI updates.
+- **`#safari-mute-button-outer` suppressed** — CSS rule injected so the makecode wrapper's "click to unmute" overlay never sits as a red icon over the game.
+- **Carousel responsiveness tuning** (in `scripts/apply-overrides.sh`): patches `config.json` to `GamepadPollLoopMilli=16` (was 50), `GamepadOnDownCooldownMilli=150` (was 250), `GamepadOnHeldCooldownMilli=80` (was 167). Held-direction scrolling now feels close to native.
+- **Console test helpers** (`overrides/public/native-gamepad-test-helpers.js`) — always-loaded dev tool exposing `a()`, `b()`, `right(500)`, `hold('right')`, `release()`, `axes(lx,ly,rx,ry)`, `seq([...])`, plus a `gp` namespace. Bails to a logged "would send" payload when no native bridge is present.
 
-```
-M overrides/public/native-gamepad-bridge.js
-```
-
-This file currently has the **recursive fanout** baked in (every frame forwards updates to its own iframes via postMessage — not just the main frame) and needs the **gamepad → keyboard event synthesis** added next.
+The two `<script>` injection slots in `scripts/inject-html.js` load in order: `pxt-stub.js` → `native-gamepad-bridge.js` → `native-gamepad-test-helpers.js` (the helpers depend on `__nativeGamepadUpdate` from the bridge).
 
 ---
 
@@ -78,9 +78,9 @@ The contract:
 - Polyfill in main frame: applies update locally + postMessages `{tag: '__mkcGamepadUpdate', payload}` to every direct iframe
 - Polyfill in sub-frame: listens for that message, applies update locally + postMessages to ITS direct iframes (recursion handles arbitrary nesting depth)
 
-### What's about to be added (next step)
+### Sub-frame keyboard synthesis (the load-bearing detail)
 
-In sub-frame branch only, after applying the update, synthesize keyboard events for each button state transition:
+In sub-frame branches, after applying the update, the polyfill synthesizes keyboard events for each W3C-button state transition:
 
 | W3C button index | Keyboard event |
 |---|---|
@@ -88,16 +88,16 @@ In sub-frame branch only, after applying the update, synthesize keyboard events 
 | 1 (B) | `Enter` (keyCode 13) |
 | 8 (Back) | `Escape` (keyCode 27) |
 | 9 (Start) | `2` (keyCode 50) |
-| 12 (D-pad Up) | `ArrowUp` (38) |
-| 13 (D-pad Down) | `ArrowDown` (40) |
-| 14 (D-pad Left) | `ArrowLeft` (37) |
-| 15 (D-pad Right) | `ArrowRight` (39) |
+| 12 (D-pad Up) **OR** left stick Y < −0.5 | `ArrowUp` (38) |
+| 13 (D-pad Down) **OR** left stick Y > 0.5 | `ArrowDown` (40) |
+| 14 (D-pad Left) **OR** left stick X < −0.5 | `ArrowLeft` (37) |
+| 15 (D-pad Right) **OR** left stick X > 0.5 | `ArrowRight` (39) |
 
-(Source: `kiosk/src/config.json` → `VirtualGamepadMaps[0]`.)
+(Source: `kiosk/src/config.json` → `VirtualGamepadMaps[0]` for the base mapping. The stick OR-logic was added so the analog stick on a Bluetooth controller also drives in-game movement.)
 
-Dispatch on both `window` and `document`, with `bubbles: true, cancelable: true`. Track previous button states (per index) to fire `keydown` on press transition, `keyup` on release transition.
+Dispatched on `document` with `bubbles: true, cancelable: true` (window listeners still see it via bubbling — we previously dispatched on both, which caused window handlers to run twice per press). Previous button state tracked per index so `keydown` fires only on press transition, `keyup` only on release.
 
-**Main frame does NOT synthesize keyboard events** — the kiosk's `GamepadManager.ts` already polls `navigator.getGamepads()` and dispatches its own synthetic keys for carousel navigation. Doing it again from the polyfill would double-input.
+**Main frame does NOT synthesize keyboard events** — the kiosk's `GamepadManager.ts` already polls `navigator.getGamepads()` and dispatches its own synthetic keys for carousel navigation. Doing it there would double-input.
 
 ---
 
@@ -115,15 +115,15 @@ If you ever find yourself reaching for pxtsim changes, prefer adding to `overrid
 
 ## 6. Testing this locally
 
-The Jest test suite covers main-frame behavior only (jsdom doesn't simulate iframe nesting cleanly). Run with:
+Jest covers main-frame polyfill behavior plus the console helpers. Run with:
 
 ```bash
-npx jest tests/native-gamepad-bridge.test.js
+npx jest tests/native-gamepad-bridge.test.js tests/native-gamepad-test-helpers.test.js tests/inject-html.test.js
 ```
 
-11 tests, all pass on the current uncommitted version. The new iframe-side synthesis isn't covered by tests yet — could be added with mocked `KeyboardEvent.dispatchEvent` assertions and a faked `window.top` to simulate sub-frame context.
+21 tests across the three files. The sub-frame keyboard synthesis branch isn't covered yet — jsdom doesn't simulate iframe nesting cleanly. Could be added with mocked `KeyboardEvent.dispatchEvent` assertions and a faked `window.top` to simulate sub-frame context.
 
-End-to-end testing requires running the native shell on a real Apple TV or in the tvOS 26.5 simulator (older sims crash on the WKWebView private API). Then Safari → Develop → [device] → mkc-arcade-kiosk-tvos opens a Web Inspector that lets you switch between frames via a dropdown in the bottom-left of the Console pane. The two iframes show up as `--run` and `sim-frame-NNNN`.
+End-to-end testing requires running the native shell on a real Apple TV or in the tvOS 26.5 simulator (older sims crash on the WKWebView private API). Then Safari → Develop → [device] → Lamb Games opens a Web Inspector that lets you switch between frames via a dropdown in the bottom-left of the Console pane. The two iframes show up as `--run` and `sim-frame-NNNN`. In the native shell, Debug builds enable `isInspectable`; Release builds do not.
 
 ---
 
