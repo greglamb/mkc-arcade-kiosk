@@ -9,6 +9,21 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Node version gate (Tech Debt #3). Catches the common "shell didn't
+# auto-nvm-use" footgun before the script mutates the submodule.
+REQUIRED_NODE_MAJOR=$(grep -oE '^[0-9]+' "$ROOT/.nvmrc" | head -1)
+ACTUAL_NODE_MAJOR=$(node --version 2>/dev/null | grep -oE 'v[0-9]+' | tr -d v || true)
+if [[ -z "$ACTUAL_NODE_MAJOR" ]]; then
+    echo "ERROR: 'node' not on PATH. Run 'nvm use' or install Node ${REQUIRED_NODE_MAJOR}." >&2
+    exit 1
+fi
+if [[ "$ACTUAL_NODE_MAJOR" != "$REQUIRED_NODE_MAJOR" ]]; then
+    echo "ERROR: Node ${ACTUAL_NODE_MAJOR}.x running, .nvmrc requires ${REQUIRED_NODE_MAJOR}.x." >&2
+    echo "       Run 'nvm use' or switch to Node ${REQUIRED_NODE_MAJOR} and retry." >&2
+    exit 1
+fi
+
 KIOSK="$ROOT/vendor/pxt/kiosk"
 
 if [[ ! -d "$KIOSK" ]]; then

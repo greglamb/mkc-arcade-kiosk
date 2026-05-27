@@ -42,6 +42,13 @@ function makeFakeRoot() {
   );
   fs.chmodSync(path.join(root, 'scripts', 'apply-overrides.sh'), 0o755);
 
+  // Seed .nvmrc so the script's Node-version gate finds it (added in
+  // E-T1; the fake root must mirror the real ROOT layout the gate reads).
+  fs.copyFileSync(
+    path.join(ROOT_REAL, '.nvmrc'),
+    path.join(root, '.nvmrc')
+  );
+
   // Fake kiosk package.json (minimum required fields).
   fs.writeFileSync(
     path.join(root, 'vendor', 'pxt', 'kiosk', 'package.json'),
@@ -143,6 +150,58 @@ describe('apply-overrides.sh', () => {
       path.join(root, 'scripts', 'apply-overrides.sh')
     );
     fs.chmodSync(path.join(root, 'scripts', 'apply-overrides.sh'), 0o755);
+    // Seed .nvmrc so the Node-version gate doesn't short-circuit before the
+    // submodule check runs (this test's contract is "submodule missing", not
+    // "no .nvmrc").
+    fs.copyFileSync(
+      path.join(ROOT_REAL, '.nvmrc'),
+      path.join(root, '.nvmrc')
+    );
     expect(() => runScript(root)).toThrow();
+  });
+});
+
+describe('Node version gate', () => {
+  const { spawnSync } = require('child_process');
+
+  let tmpdir;
+
+  beforeEach(() => {
+    tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'mkc-node-gate-'));
+  });
+
+  afterEach(() => {
+    fs.rmSync(tmpdir, { recursive: true, force: true });
+  });
+
+  test('exits 1 with a clear message when node major mismatches .nvmrc', () => {
+    const fakeNode = path.join(tmpdir, 'node');
+    fs.writeFileSync(fakeNode, '#!/bin/bash\necho v99.0.0\n', { mode: 0o755 });
+
+    const result = spawnSync(SCRIPT, [], {
+      env: { ...process.env, PATH: `${tmpdir}:${process.env.PATH}` },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/Node 99\.x running, \.nvmrc requires 22\.x/);
+  });
+
+  test('exits 1 when node --version produces no parseable output', () => {
+    // Simulates the "node not on PATH" case: a fake `node` that prints
+    // nothing leaves ACTUAL_NODE_MAJOR empty, which the gate treats the
+    // same as a missing node binary. (A literally-empty PATH would also
+    // break the script's #!/usr/bin/env bash shebang, so we can't test
+    // that case directly — but the gate's behavior is identical.)
+    const fakeNode = path.join(tmpdir, 'node');
+    fs.writeFileSync(fakeNode, '#!/bin/bash\nexit 0\n', { mode: 0o755 });
+
+    const result = spawnSync(SCRIPT, [], {
+      env: { ...process.env, PATH: `${tmpdir}:${process.env.PATH}` },
+      encoding: 'utf8',
+    });
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toMatch(/'node' not on PATH/);
   });
 });
