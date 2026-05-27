@@ -4,8 +4,8 @@
 
 <!-- Actively queued work. Items here should be ready to start. -->
 
-- [2026-05-26] Hand-off (SPEC §5 steps 7–8)
-  Detail: v1 implementation plan T1–T18 is DONE. `npm run build` ships clean; 94 Jest tests pass with statements 91% / branches 85% / functions 96% / lines 91% (all above 75%). The `pxt.Cloud.apiRoot === "about:blank"` invariant is verified in the built artifact. Hand-off steps remaining (user actions): (1) `gh repo create greglamb/mkc-arcade-kiosk --public --source=. --remote=origin --push`, (2) GitHub UI → Settings → Pages → Source: GitHub Actions, (3) wait for first deploy green, (4) open the URL in a browser, (5) pair Xbox/PS5 controller and smoke test (carousel cycle + A launches game + Back returns), (6) `git tag -a "v0.YYMM.DDBB" -m "Initial release" && git push origin --tags`. After that, revisit the project-standards promotion candidates queued in Someday/Maybe.
+- [2026-05-26] Hand-off remaining: smoke test + first tag
+  Detail: v1 is LIVE at https://greglamb.github.io/mkc-arcade-kiosk/ — repo wired up, Pages enabled (build_type=workflow), two consecutive deploys green (`bec82d6` and `ccf582b`). Carousel currently has Starfox + Space Destroyer. Remaining user actions: (a) open URL in Chrome, pair Xbox/PS5 controller via Bluetooth, smoke test carousel cycle + A-launches-game + Back-returns + WASD/arrow-key keyboard fallback, (b) verify `?mkcDebug=1` shows `[pxt-stub]` log lines + `window.__pxtStubStats`, (c) `git tag -a "v0.2605.2601" -m "Initial release" && git push origin --tags`, (d) revisit deferred project-standards promotions in Someday/Maybe.
 
 - [2026-05-26] T17 iteration discovered 3 more pxt.* symbols — see commit `13068fd`
   Detail: Build clean required adding `lf` global, `pxt.BrowserUtils.isMobile`, and `pxt.Cloud.JsonScript` type — plus loosening index signatures on `TargetBundle`/`WebConfig`/`TargetConfig` from `unknown` to `any` (kiosk reads arbitrary properties off bundles). Documented for future Dependabot bump review. This is exactly the "1–3 symbols may surface" prediction from the design's risk table — design held.
@@ -19,6 +19,9 @@
 ## Someday/Maybe
 
 <!-- Ideas worth considering, no commitment. Lowest priority. -->
+
+- [2026-05-26] Node.js 20 actions deprecation (GitHub annotation, 2026-06 forced switch)
+  Detail: `actions/checkout@v4`, `actions/configure-pages@v5`, `actions/setup-node@v4`, `actions/upload-artifact@v4` all run on Node 20 today. GitHub force-switches to Node 24 on 2026-06-02 and removes Node 20 on 2026-09-16. Dependabot is configured for monthly github-actions bumps, so newer pinned versions should arrive automatically and resolve this before the deadline. Watch for Dependabot PRs labeled `dependencies` + `ci` and merge when CI is green.
 
 - [2026-05-26] Promote three project-standards findings (deferred until v1 T17/T18 ship green)
   Detail: From the kiosk-source-overrides brainstorm (design doc `docs/goodvibes/specs/2026-05-26-kiosk-source-overrides-design.md` §14). Three candidates: (1) post-Dependabot-bump check that greps `kiosk/src/` for new `pxt.*` symbols and verifies they're in `overrides/src/pxt.d.ts` + `overrides/public/pxt-stub.js`, (2) note that the `pxt` global is a load-bearing TS ambient (not just a runtime stub), (3) Node 22 fail-fast as a confirmed property of `apply-overrides.sh` (not aspirational). Trigger: revisit after the kiosk-source-overrides implementation lands and T17/T18 are green. Decision (user, 2026-05-26): defer to avoid churning project-standards before the design has been exercised end-to-end.
@@ -35,6 +38,9 @@
 <!-- Tech Debt #1 (pxt-stub premise): closed by overrides/src/pxt.d.ts + overrides/src/index.tsx + pxt-stub extension. -->
 <!-- Tech Debt #2 (tsconfig.paths.json): closed by overrides/tsconfig.paths.json dropping react/* aliases. -->
 <!-- Tech Debt #3 (Node 24 leveldown): closed by Node-major fail-fast in scripts/apply-overrides.sh. -->
+
+- [2026-05-26] CI build relies on react family staged at `vendor/pxt/` root (see `bec82d6`)
+  Detail: First deploy after pushing to greglamb/mkc-arcade-kiosk failed because webpack couldn't resolve `react-dom` — kiosk's `package.json` declares `@types/react` and `@types/react-dom` as `file:../node_modules/...` (file-based deps pointing at `vendor/pxt/node_modules`), and react/react-dom themselves aren't direct deps at all. Fix: added a "Stage react family at vendor/pxt root" step to deploy.yml using `npm install --ignore-scripts --no-save --no-package-lock` (the `--ignore-scripts` dodges leveldown's native-compile failure). Cleaner long-term fix: patch `kiosk/package.json` via apply-overrides to declare `react` and `react-dom` as direct deps and replace the `file://` paths with version specifiers — but that breaks `npm ci` (lockfile drift) and requires switching to `npm install`. Defer until upstream changes the kiosk's dep shape or Dependabot bumps reveal a cleaner path.
 
 ## Rejected Approaches
 
@@ -68,7 +74,8 @@
   Rationale: same content as the chosen approach but the shim lives outside `tsconfig.json`'s `include: ["src"]`, requiring explicit triple-slash refs in our `index.tsx`. Adds indirection for no benefit — we still author every declaration.
 
 - [2026-05-26] Install React family at `vendor/pxt/` root via `npm install --no-save --ignore-scripts` (the current T17 workaround)
-  Rationale: writes into the submodule's `node_modules`, creates a long-running implicit dependency, and `--ignore-scripts` masks build failures we'd prefer to see. The `overrides/tsconfig.paths.json` approach is cleaner — dropping the aliases lets standard webpack resolution find React in `kiosk/node_modules`.
+  Rationale (rejected at design time): writes into the submodule's `node_modules`, creates a long-running implicit dependency, and `--ignore-scripts` masks build failures we'd prefer to see. The `overrides/tsconfig.paths.json` approach is cleaner — dropping the aliases lets standard webpack resolution find React in `kiosk/node_modules`.
+  **Update (later same day, commit `bec82d6`): ADOPTED.** Rejection was wrong. The tsconfig.paths drop is necessary but not sufficient — kiosk's `file:../node_modules/@types/react` deps require `vendor/pxt/node_modules` to exist at all, AND react/react-dom themselves aren't kiosk-declared deps so they don't land in `kiosk/node_modules` either. The first CI deploy failed with `Module not found: Can't resolve 'react-dom'`. Re-instated as a CI workflow step (with `--ignore-scripts` accepted as the trade-off for dodging leveldown). Logged as Tech Debt for a cleaner long-term fix.
 
 - [2026-05-26] Author `mkc-arcade-kiosk-ADDENDUM-02.md` immediately as sibling to SPEC
   Rationale: premature — the design may evolve during T17 implementation. The design doc at `docs/goodvibes/specs/2026-05-26-kiosk-source-overrides-design.md` is the working source of truth. Promote to an addendum after T17 + T18 ship green.
