@@ -20,6 +20,8 @@ the full rules.
 
 ### Removed
 
+- The "Add your game" button on the carousel — the kiosk is admin-curated via `overrides/games.json` and players don't add their own games at runtime.
+
 ## [v0.2605.2601] - 2026-05-26
 
 Initial release of the self-hosted MakeCode Arcade Kiosk.
