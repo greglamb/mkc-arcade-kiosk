@@ -1,29 +1,47 @@
 // native-gamepad-bridge.js — bridges a host WebView's native game controllers
 // into the page's navigator.getGamepads() API.
 //
-// In a regular browser, this script no-ops and the real Gamepad API is used.
-// In a native shell (detected via window.webkit.messageHandlers.gameController),
-// it overrides getGamepads() and the host pushes state via __nativeGamepadUpdate.
+// Frame-aware: runs in BOTH the main kiosk frame and the cross-origin
+// MakeCode simulator iframe. In the native shell, the iOS app injects this
+// same script (via WKUserScript with forMainFrameOnly:NO) into every frame,
+// guaranteeing both windows get a polyfilled `navigator.getGamepads`.
 //
-// Load order: this MUST load before the CRA bundle, because Kiosk's
-// GamepadManager.initialize() calls getGamepads() once at startup.
+// In a regular browser without a native shell, this script no-ops in the
+// main frame and the real Gamepad API works as usual.
+//
+// Architecture:
+//   - Main frame:  receives gamepad state from native via
+//                  `window.__nativeGamepadUpdate(payload)`, updates local
+//                  polyfilled `navigator.getGamepads()`, AND forwards the
+//                  payload to every child iframe via postMessage.
+//   - Sub-frames:  listen for the parent's postMessage and update their own
+//                  polyfilled `navigator.getGamepads()`. The MakeCode
+//                  simulator polls getGamepads() and sees the state.
+//
+// Load order: this MUST load before the CRA bundle in the main frame because
+// Kiosk's GamepadManager.initialize() calls getGamepads() once at startup.
+//
+// The protocol must match `MkcGamepadPolyfillScript` in the native shell's
+// `GameWebView.m` (mkc-arcade-kiosk-tvos repo).
 (function () {
   'use strict';
 
   var HANDLER_NAME = 'gameController';
+  var MAX_PADS = 4;
+  var POSTMSG_TAG = '__mkcGamepadUpdate';
+
+  var isMainFrame = (window === window.top);
+  var pads = new Array(MAX_PADS).fill(null);
   var bridge = window.webkit
     && window.webkit.messageHandlers
     && window.webkit.messageHandlers[HANDLER_NAME];
 
-  if (!bridge) {
-    // No native shell. Let the real Gamepad API work normally.
+  // Main frame without a native shell → let the real Gamepad API work.
+  // (Sub-frames always install the polyfill listener; the parent's postMessage
+  // delivers data only when a native shell is present.)
+  if (isMainFrame && !bridge) {
     return;
   }
-
-  console.log('[native-gamepad-bridge] Installing (native shell detected)');
-
-  var MAX_PADS = 4;
-  var padStates = new Array(MAX_PADS).fill(null);
 
   /**
    * Build a W3C Standard Gamepad object from a raw state payload.
@@ -63,38 +81,64 @@
     };
   }
 
-  /**
-   * Native shell calls this on every controller state change.
-   * Accepts JSON string or pre-parsed array of length MAX_PADS.
-   * Fires gamepadconnected/gamepaddisconnected events on slot transitions.
-   */
-  window.__nativeGamepadUpdate = function (payload) {
-    try {
-      var incoming = typeof payload === 'string' ? JSON.parse(payload) : payload;
-      for (var i = 0; i < MAX_PADS; i++) {
-        var prev = padStates[i];
-        var next = incoming[i] ? build(i, incoming[i]) : null;
+  function applyUpdate(incoming) {
+    for (var i = 0; i < MAX_PADS; i++) {
+      var prev = pads[i];
+      var next = incoming[i] ? build(i, incoming[i]) : null;
 
-        if (!prev && next) {
+      if (!prev && next) {
+        try {
           window.dispatchEvent(new GamepadEvent('gamepadconnected', { gamepad: next }));
-        } else if (prev && !next) {
+        } catch (e) { /* GamepadEvent unavailable in some iframe contexts */ }
+      } else if (prev && !next) {
+        try {
           window.dispatchEvent(new GamepadEvent('gamepaddisconnected', { gamepad: prev }));
-        }
-        padStates[i] = next;
+        } catch (e) { /* same */ }
       }
-    } catch (e) {
-      console.error('[native-gamepad-bridge] update failed:', e);
+      pads[i] = next;
     }
-  };
+  }
 
-  // Override the Gamepad API. Kiosk's GamepadManager polls this every
-  // GamepadPollLoopMilli (50ms by default).
-  navigator.getGamepads = function () { return padStates; };
+  // Polyfill `navigator.getGamepads()` in every frame.
+  navigator.getGamepads = function () { return pads; };
 
-  // Signal native that the polyfill is ready and it can push initial state.
-  try {
-    bridge.postMessage({ type: 'polyfill_ready' });
-  } catch (e) {
-    console.error('[native-gamepad-bridge] ready signal failed:', e);
+  if (isMainFrame) {
+    console.log('[native-gamepad-bridge] main frame: installing (native shell detected)');
+
+    // Native pushes state here. We update locally AND fan out to iframes via
+    // postMessage so they can update their own polyfilled getGamepads().
+    window.__nativeGamepadUpdate = function (payload) {
+      try {
+        var incoming = typeof payload === 'string' ? JSON.parse(payload) : payload;
+        applyUpdate(incoming);
+        var iframes = document.querySelectorAll('iframe');
+        for (var j = 0; j < iframes.length; j++) {
+          try {
+            iframes[j].contentWindow.postMessage(
+              { tag: POSTMSG_TAG, payload: incoming },
+              '*'
+            );
+          } catch (e) { /* iframe not yet loaded; safe to ignore */ }
+        }
+      } catch (e) {
+        console.error('[native-gamepad-bridge] update failed:', e);
+      }
+    };
+
+    // Signal native that the polyfill is ready and it can push initial state.
+    try {
+      bridge.postMessage({ type: 'polyfill_ready' });
+    } catch (e) {
+      console.error('[native-gamepad-bridge] ready signal failed:', e);
+    }
+  } else {
+    console.log('[native-gamepad-bridge] iframe: listening for parent updates');
+
+    // Sub-frame: receive state from the parent's postMessage fanout.
+    window.addEventListener('message', function (e) {
+      if (e.data && e.data.tag === POSTMSG_TAG && e.data.payload) {
+        applyUpdate(e.data.payload);
+      }
+    });
   }
 })();
