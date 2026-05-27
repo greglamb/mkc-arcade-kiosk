@@ -14,12 +14,21 @@ the full rules.
 
 ### Added
 
-- Starfox (from `gigglyparrot/starfox`) joins the carousel.
-
 ### Changed
 
 ### Fixed
 
 ### Removed
 
-- Bunny Hop, Hot Air Balloon, and Falling Duck are no longer in the carousel — the kiosk now ships with just two games (Starfox and Space Destroyer).
+## [v0.2605.2601] - 2026-05-26
+
+Initial release of the self-hosted MakeCode Arcade Kiosk.
+
+### Added
+
+- Carousel with two starter games: Starfox (share ID `S33849-24922-26975-56296`) and Space Destroyer (share ID `50225-04801-24334-14778`).
+- Deployment to GitHub Pages at https://greglamb.github.io/mkc-arcade-kiosk/.
+- Xbox/PS5 controller support via the browser Gamepad API; WASD/arrow-key keyboard fallback.
+- Companion tvOS shell can pair with the carousel via a native gamepad bridge (`window.webkit.messageHandlers.gameController`).
+- `?mkcDebug=1` query parameter exposes pxt-stub telemetry counters at `window.__pxtStubStats` for debugging.
+- No telemetry leaves the device — `pxt.Cloud.apiRoot` is pinned to `about:blank`.
