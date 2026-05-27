@@ -4,8 +4,11 @@
 
 <!-- Actively queued work. Items here should be ready to start. -->
 
-- [2026-05-26] Resume v1 plan T17 (local build validation)
-  Detail: Kiosk-source-overrides extension shipped (commits `8445470` through `14c6886`) — 89/89 tests pass, idempotency verified, both copy steps and Node-22 gate landed. Tech Debt #2 and #3 are CLOSED by this work. Next: `nvm use && ./scripts/apply-overrides.sh && cd vendor/pxt/kiosk && npm ci && CI=false npm run build`. Design risk table predicts 1–3 additional `pxt.*` symbols may surface as TS2304/TS2339 — extend `overrides/src/pxt.d.ts` + `overrides/public/pxt-stub.js` in lockstep, re-run, repeat until clean. Then T18 (full Jest with coverage ≥75%).
+- [2026-05-26] Hand-off (SPEC §5 steps 7–8)
+  Detail: v1 implementation plan T1–T18 is DONE. `npm run build` ships clean; 94 Jest tests pass with statements 91% / branches 85% / functions 96% / lines 91% (all above 75%). The `pxt.Cloud.apiRoot === "about:blank"` invariant is verified in the built artifact. Hand-off steps remaining (user actions): (1) `gh repo create greglamb/mkc-arcade-kiosk --public --source=. --remote=origin --push`, (2) GitHub UI → Settings → Pages → Source: GitHub Actions, (3) wait for first deploy green, (4) open the URL in a browser, (5) pair Xbox/PS5 controller and smoke test (carousel cycle + A launches game + Back returns), (6) `git tag -a "v0.YYMM.DDBB" -m "Initial release" && git push origin --tags`. After that, revisit the project-standards promotion candidates queued in Someday/Maybe.
+
+- [2026-05-26] T17 iteration discovered 3 more pxt.* symbols — see commit `13068fd`
+  Detail: Build clean required adding `lf` global, `pxt.BrowserUtils.isMobile`, and `pxt.Cloud.JsonScript` type — plus loosening index signatures on `TargetBundle`/`WebConfig`/`TargetConfig` from `unknown` to `any` (kiosk reads arbitrary properties off bundles). Documented for future Dependabot bump review. This is exactly the "1–3 symbols may surface" prediction from the design's risk table — design held.
 
 ## Blocked
 
@@ -28,14 +31,10 @@
 
 <!-- Internal debt to address eventually. Things that work but aren't right. -->
 
-- [2026-05-26] SPEC §4.10's "minimal pxt-stub" premise is incorrect at the pinned SHA
-  Detail: SPEC §7 mentioned "Upstream adds new pxt.* calls the stub doesn't cover" as a risk with mitigation "Extend stub; failure mode is loud, not silent." Reality at SHA `1aa8c6c`: kiosk source references >15 pxt.* members not in the v1 stub. **Being addressed** by the kiosk-source-overrides design (commit `75c3ecb`) — replaces `kiosk/src/index.tsx`, adds an ambient `kiosk/src/pxt.d.ts`, and extends `pxt-stub.js` with `BrowserUtils.isLocalHost` + `Utils.*`. Closes when "Next Up" implementation lands.
-
-- [2026-05-26] SPEC's `npm ci` flow doesn't cover the kiosk's tsconfig.paths.json aliases
-  Detail: `tsconfig.paths.json` aliases `react/*` → `../node_modules/react/*` (pxt root, not kiosk). Webpack needs `vendor/pxt/node_modules/react` populated, but the SPEC's deploy.yml only installs kiosk-level deps. **Being addressed** by the kiosk-source-overrides design via `overrides/tsconfig.paths.json` which drops the `react/*` and `react-dom/*` aliases entirely. Closes when "Next Up" implementation lands.
-
-- [2026-05-26] `npm install` at vendor/pxt root fails on leveldown native compile under Node 24
-  Detail: leveldown@5.6.0 (transitive dep) fails node-gyp rebuild on Node v24.12.0 (Darwin). Root cause: nvm isn't auto-invoked in the dev shell so the wrong Node major runs. **Being addressed** by the kiosk-source-overrides design via a fail-fast Node-major check at the top of `apply-overrides.sh` (reads `.nvmrc`, exits 1 with a clear message if mismatched). Closes when "Next Up" implementation lands.
+<!-- All three 2026-05-26 Tech Debt items CLOSED by kiosk-source-overrides extension (commits 8445470..14c6886 + 13068fd). -->
+<!-- Tech Debt #1 (pxt-stub premise): closed by overrides/src/pxt.d.ts + overrides/src/index.tsx + pxt-stub extension. -->
+<!-- Tech Debt #2 (tsconfig.paths.json): closed by overrides/tsconfig.paths.json dropping react/* aliases. -->
+<!-- Tech Debt #3 (Node 24 leveldown): closed by Node-major fail-fast in scripts/apply-overrides.sh. -->
 
 ## Rejected Approaches
 
