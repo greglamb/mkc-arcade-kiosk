@@ -51,6 +51,13 @@ node -e "
 echo "==> Copying games.json -> kiosk public root"
 cp -f "$ROOT/overrides/games.json" "$KIOSK/public/games.json"
 
+echo "==> Copying src/ overrides (kiosk bootstrap + pxt ambient d.ts)"
+cp -f "$ROOT/overrides/src/index.tsx" "$KIOSK/src/index.tsx"
+cp -f "$ROOT/overrides/src/pxt.d.ts"  "$KIOSK/src/pxt.d.ts"
+
+echo "==> Copying tsconfig.paths.json override (drops absent react aliases)"
+cp -f "$ROOT/overrides/tsconfig.paths.json" "$KIOSK/tsconfig.paths.json"
+
 echo "==> Patching package.json homepage for relative asset paths"
 # Setting homepage to "." makes CRA emit relative URLs in index.html and the
 # manifest, so the build works at any subpath (GitHub Pages project URL,

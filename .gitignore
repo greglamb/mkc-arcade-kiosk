@@ -154,3 +154,6 @@ vendor/pxt/kiosk/node_modules/
 vendor/pxt/kiosk/public/native-gamepad-bridge.js
 vendor/pxt/kiosk/public/pxt-stub.js
 vendor/pxt/kiosk/public/games.json
+vendor/pxt/kiosk/src/index.tsx
+vendor/pxt/kiosk/src/pxt.d.ts
+vendor/pxt/kiosk/tsconfig.paths.json
