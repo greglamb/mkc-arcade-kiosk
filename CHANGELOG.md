@@ -17,6 +17,7 @@ the full rules.
 ### Changed
 
 - Space Destroyer's description now credits Microsoft as the author.
+- Starfox's description now credits Elliot as the author and drops the Arwing reference.
 
 ### Fixed
 
