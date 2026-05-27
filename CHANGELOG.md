@@ -16,6 +16,8 @@ the full rules.
 
 ### Changed
 
+- Space Destroyer's description now credits Microsoft as the author.
+
 ### Fixed
 
 - Gamepad input now drives the actual game running inside the simulator iframe when the kiosk is loaded in a native shell (e.g. the `mkc-arcade-kiosk-tvos` Apple TV app). The bridge previously polyfilled `navigator.getGamepads()` only on the parent kiosk page, so controller input drove the carousel but went dead the moment a game launched. It now installs in every frame, recursively forwards updates across all nested simulator iframes (the pxt simulator nests two iframes deep), and synthesizes the keyboard events the game runtime actually listens for.
