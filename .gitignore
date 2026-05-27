@@ -156,4 +156,5 @@ vendor/pxt/kiosk/public/pxt-stub.js
 vendor/pxt/kiosk/public/games.json
 vendor/pxt/kiosk/src/index.tsx
 vendor/pxt/kiosk/src/pxt.d.ts
+vendor/pxt/kiosk/src/State/State.ts
 vendor/pxt/kiosk/tsconfig.paths.json

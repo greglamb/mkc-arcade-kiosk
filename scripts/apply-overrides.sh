@@ -55,7 +55,10 @@ echo "==> Copying src/ overrides (kiosk bootstrap + pxt ambient d.ts)"
 cp -f "$ROOT/overrides/src/index.tsx" "$KIOSK/src/index.tsx"
 cp -f "$ROOT/overrides/src/pxt.d.ts"  "$KIOSK/src/pxt.d.ts"
 
-echo "==> Copying tsconfig.paths.json override (drops absent react aliases)"
+echo "==> Copying src/State/State.ts override (locks Add-your-game button off)"
+cp -f "$ROOT/overrides/src/State/State.ts" "$KIOSK/src/State/State.ts"
+
+echo "==> Copying tsconfig.paths.json override (pins single React instance)"
 cp -f "$ROOT/overrides/tsconfig.paths.json" "$KIOSK/tsconfig.paths.json"
 
 echo "==> Patching package.json homepage for relative asset paths"

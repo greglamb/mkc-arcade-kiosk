@@ -17,8 +17,10 @@ function makeFakeRoot() {
   // Mirror only what apply-overrides.sh needs: overrides/ and vendor/pxt/kiosk/.
   fs.mkdirSync(path.join(root, 'overrides', 'public'), { recursive: true });
   fs.mkdirSync(path.join(root, 'overrides', 'src'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'overrides', 'src', 'State'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'public'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'State'), { recursive: true });
   fs.mkdirSync(path.join(root, 'scripts'), { recursive: true });
 
   // Copy override sources from the real repo.
@@ -45,6 +47,10 @@ function makeFakeRoot() {
   fs.copyFileSync(
     path.join(ROOT_REAL, 'overrides', 'tsconfig.paths.json'),
     path.join(root, 'overrides', 'tsconfig.paths.json')
+  );
+  fs.copyFileSync(
+    path.join(ROOT_REAL, 'overrides', 'src', 'State', 'State.ts'),
+    path.join(root, 'overrides', 'src', 'State', 'State.ts')
   );
   fs.copyFileSync(
     path.join(ROOT_REAL, 'scripts', 'apply-overrides.sh'),
@@ -248,6 +254,24 @@ describe('Source-tree override copy steps', () => {
     expect(fs.readFileSync(dest, 'utf8')).toBe(fs.readFileSync(src, 'utf8'));
   });
 
+  test('copies overrides/src/State/State.ts to vendor/pxt/kiosk/src/State/State.ts', () => {
+    const root = makeFakeRoot();
+    runScript(root);
+    const dest = path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'State', 'State.ts');
+    const src = path.join(ROOT_REAL, 'overrides', 'src', 'State', 'State.ts');
+    expect(fs.existsSync(dest)).toBe(true);
+    expect(fs.readFileSync(dest, 'utf8')).toBe(fs.readFileSync(src, 'utf8'));
+  });
+
+  test('State.ts override sets locked: true (hides Add-your-game button)', () => {
+    const text = fs.readFileSync(
+      path.join(ROOT_REAL, 'overrides', 'src', 'State', 'State.ts'),
+      'utf8'
+    );
+    expect(text).toMatch(/locked:\s*true/);
+    expect(text).not.toMatch(/locked:\s*false/);
+  });
+
   test('is idempotent for the new copy steps (second run is a no-op)', () => {
     const root = makeFakeRoot();
     runScript(root);
@@ -271,6 +295,7 @@ describe('.gitignore', () => {
   test.each([
     'vendor/pxt/kiosk/src/index.tsx',
     'vendor/pxt/kiosk/src/pxt.d.ts',
+    'vendor/pxt/kiosk/src/State/State.ts',
     'vendor/pxt/kiosk/tsconfig.paths.json',
   ])('ignores submodule destination %s', (entry) => {
     expect(text).toContain(entry);
