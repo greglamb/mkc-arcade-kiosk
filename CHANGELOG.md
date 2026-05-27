@@ -16,7 +16,6 @@ the full rules.
 
 ### Changed
 
-- Space Destroyer's description now credits Microsoft as the author.
 - Starfox's description now credits Elliot as the author and drops the Arwing reference.
 
 ### Fixed
@@ -26,6 +25,7 @@ the full rules.
 
 ### Removed
 
+- Space Destroyer removed from the carousel.
 - The "Add your game" button on the carousel — the kiosk is admin-curated via `overrides/games.json` and players don't add their own games at runtime.
 
 ## [v0.2605.2601] - 2026-05-26
