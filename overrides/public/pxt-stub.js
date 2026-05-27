@@ -102,14 +102,28 @@
     },
   };
 
-  // Kiosk source uses pxt.BrowserUtils.isLocalHost — the carousel runs on
-  // GitHub Pages or file:// in the tvOS shell, never localhost-only.
-  window.pxt.BrowserUtils = { isLocalHost: function () { return false; } };
+  // Kiosk source uses pxt.BrowserUtils.* — the carousel runs on GitHub Pages
+  // or file:// in the tvOS shell, never localhost-only and never on mobile.
+  window.pxt.BrowserUtils = {
+    isLocalHost: function () { return false; },
+    isMobile:    function () { return false; },
+  };
 
   // Kiosk source uses pxt.Utils (plural). Alias to the singular Util that
   // the SPEC §4.10 stub already provides. Extend this namespace when T17
   // surfaces additional Utils.* references.
   window.pxt.Utils = { escapeForRegex: window.pxt.Util.escapeForRegex };
+
+  // Standalone localization helper used by kiosk source (50+ call sites).
+  // Kiosk is English-only — implement {N}-placeholder interpolation with
+  // no translation table. Matches upstream pxt's lf() signature.
+  window.lf = function (template) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    return String(template).replace(/\{(\d+)\}/g, function (_, i) {
+      var v = args[parseInt(i, 10)];
+      return v == null ? '' : String(v);
+    });
+  };
 
   if (DEBUG) console.log('[pxt-stub] installed');
 })();
