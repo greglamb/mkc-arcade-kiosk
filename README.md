@@ -4,16 +4,22 @@ A self-hosted carousel for [MakeCode Arcade](https://arcade.makecode.com) games.
 
 **Live:** https://greglamb.github.io/mkc-arcade-kiosk/
 
+Companion native shell: [`greglamb/mkc-arcade-kiosk-tvos`](https://github.com/greglamb/mkc-arcade-kiosk-tvos) — a tvOS app that loads this URL fullscreen on an Apple TV and bridges native Bluetooth / Siri Remote input into the page. See [`HANDOFF-TVOS.md`](HANDOFF-TVOS.md) for the cross-repo protocol.
+
 ## What it is
 
-A thin wrapper around Microsoft's [MakeCode Arcade Kiosk](https://github.com/microsoft/pxt/tree/master/kiosk) UI. The upstream kiosk lives as a pinned git submodule at `vendor/pxt/`; all our customizations live in [`overrides/`](overrides/) and are copied into the submodule at build time. This keeps the submodule pristine so monthly Dependabot bumps merge cleanly.
+A thin wrapper around Microsoft's [MakeCode Arcade Kiosk](https://github.com/microsoft/pxt/tree/master/kiosk) UI. The upstream kiosk lives as a pinned git submodule at `vendor/pxt/`; all customizations live in [`overrides/`](overrides/) and are copied into the submodule at build time. This keeps the submodule pristine so monthly Dependabot bumps merge cleanly.
 
 The kiosk:
 
 - Shows a scrollable carousel of MakeCode Arcade games and launches each in an embedded simulator.
 - Tracks high scores in `localStorage`.
-- Pairs natively with the Gamepad API (Xbox / PS5 controllers via Bluetooth). Falls back to WASD / arrow keys for keyboard play.
+- Pairs natively with the Gamepad API (Xbox / PS5 controllers via Bluetooth, plus WASD / arrow-key keyboard fallback). When loaded inside the tvOS shell, a polyfill recursively bridges the native controller into the carousel **AND** into the simulator iframes — so the same controller drives both the menu and the game.
+- Left analog stick drives the same direction keys as the D-pad.
+- Auto-unmutes the MakeCode simulator's audio so games actually make sound on first launch (no "click to play" overlay).
+- Snappy gamepad response: 16 ms poll rate, 150 ms initial press-to-repeat, 80 ms held-scroll repeat (vs. upstream's 50 / 250 / 167 ms).
 - Replaces upstream's Microsoft analytics with no-op stubs; `pxt.Cloud.apiRoot` is pinned to `about:blank` so no backend calls leak.
+- Admin-curated: no in-app "Add your game" button. Game list lives in `overrides/games.json`, edited by the maintainer.
 - Deploys to GitHub Pages on every push to `main` via [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml).
 
 ## Updating the game list
@@ -38,7 +44,7 @@ Add it to `games.json`:
 {
   "id": "S33849-24922-26975-56296",
   "name": "Starfox",
-  "description": "Pilot the Arwing through space and shoot enemy fighters",
+  "description": "Shoot enemy fighters in space! Made by Elliot.",
   "highScoreMode": "SingleAscending"
 }
 ```
@@ -62,11 +68,32 @@ GitHub repo paths like `gigglyparrot/starfox` are **not** directly playable from
 
 ## Operating the kiosk
 
-- **Carousel:** D-pad left/right (or arrow keys / A+D) to scroll. **A** (or Space) launches the selected game.
-- **In a game:** **Back** or **Start** returns to the carousel.
-- **Debug mode:** Append `?mkcDebug=1` to the URL to log telemetry counters to the console and expose them at `window.__pxtStubStats`.
+**Carousel navigation**
 
-The native gamepad bridge ([`overrides/public/native-gamepad-bridge.js`](overrides/public/native-gamepad-bridge.js)) activates only when running inside the companion tvOS WebView (which exposes `window.webkit.messageHandlers.gameController`). In a regular desktop browser, it does nothing and the standard Gamepad API works.
+- D-pad left/right (or arrow keys / A+D) to scroll, left analog stick also drives the same direction keys.
+- **A** (or Space) launches the selected game. **B** (or Enter) is also wired through for in-game use.
+- **Back** or **Start** returns to the carousel from inside a game.
+
+**Debug URL parameters**
+
+- `?mkcDebug=1` — log telemetry counters to the console and expose them at `window.__pxtStubStats`.
+- `?locked=0` — escape hatch that re-enables the upstream "Add your game" button (normally hidden via [`overrides/src/State/AppStateContext.tsx`](overrides/src/State/AppStateContext.tsx)). Useful for testing the upstream UX without redeploying.
+
+**Console test helpers** ([`overrides/public/native-gamepad-test-helpers.js`](overrides/public/native-gamepad-test-helpers.js))
+
+Always loaded — call from the browser devtools console to drive synthetic gamepad input:
+
+```js
+a()              // press A briefly
+b()              // press B
+right(500)       // hold right d-pad for 500 ms
+hold('right')    // hold indefinitely; pair with release()
+release()
+axes(1, 0, 0, 0) // left stick: full right
+seq([['right', 200], ['a', 50]])
+```
+
+When the native tvOS bridge isn't present, the helpers just log the payload they would have sent — handy for sanity-checking sequences locally.
 
 ## Local development
 
@@ -77,7 +104,7 @@ git clone --recurse-submodules https://github.com/greglamb/mkc-arcade-kiosk
 cd mkc-arcade-kiosk
 nvm use
 npm install
-npm test          # Jest suite (8 files, ~85 tests)
+npm test          # Jest suite (~98 tests across 9 files)
 ```
 
 To produce a build that matches CI:
@@ -94,28 +121,38 @@ CI=false npm run build
 
 ```
 mkc-arcade-kiosk/
-├── overrides/                  # ALL customizations live here
+├── overrides/                              # ALL customizations live here
 │   ├── public/
-│   │   ├── native-gamepad-bridge.js
-│   │   └── pxt-stub.js         # mocks the upstream `pxt` global
+│   │   ├── native-gamepad-bridge.js        # frame-aware polyfill: drives carousel + games
+│   │   ├── native-gamepad-test-helpers.js  # devtools console helpers (a(), right(), ...)
+│   │   └── pxt-stub.js                     # mocks the upstream `pxt` global
 │   ├── src/
-│   │   ├── index.tsx           # no-telemetry React bootstrap
-│   │   └── pxt.d.ts            # ambient TypeScript declarations
-│   ├── tsconfig.paths.json     # pins React to a single instance
-│   ├── games.json              # ← THE file you edit most
+│   │   ├── State/
+│   │   │   ├── AppStateContext.tsx         # defaults locked=true (no "Add your game")
+│   │   │   └── State.ts                    # initialAppState mirror with locked: true
+│   │   ├── index.tsx                       # no-telemetry React bootstrap
+│   │   └── pxt.d.ts                        # ambient TypeScript declarations
+│   ├── tsconfig.paths.json                 # pins React to a single instance
+│   ├── games.json                          # ← THE file you edit most
 │   └── README.md
 ├── scripts/
-│   ├── apply-overrides.sh
+│   ├── apply-overrides.sh                  # copies overrides + tweaks config.json
 │   ├── inject-html.js
 │   └── bump-submodule.sh
-├── vendor/pxt/                 # pinned submodule, NEVER edit directly
-├── tests/                      # Jest tests
+├── vendor/pxt/                             # pinned submodule, NEVER edit directly
+├── tests/                                  # Jest tests (jsdom + node envs)
 └── .github/
     ├── workflows/deploy.yml
     └── dependabot.yml
 ```
 
 **The one rule that matters most:** never edit anything inside `vendor/pxt/`. All changes go in `overrides/` and are applied by `scripts/apply-overrides.sh` at build time. If you catch yourself opening a file under `vendor/pxt/`, stop and find (or add) the matching `overrides/` path.
+
+The apply-overrides script also patches a few fields inside the submodule's working tree (gitignored, never committed):
+
+- `kiosk/package.json` `homepage` → `"."` so CRA emits relative URLs.
+- `kiosk/src/config.json` gamepad timing → `GamepadPollLoopMilli=16`, `GamepadOnDownCooldownMilli=150`, `GamepadOnHeldCooldownMilli=80`.
+- `kiosk/public/index.html` → injects `<script>` tags for `pxt-stub.js`, `native-gamepad-bridge.js`, and `native-gamepad-test-helpers.js` (in that order).
 
 ## Cutting a release
 
@@ -133,17 +170,14 @@ Versioning is CalVer: `0.YYMM.DDBB` where `BB` is a per-day build counter starti
    git push origin main "v0.YYMM.DDBB"
    ```
 
-## Companion repo
-
-The deployed URL is also designed to load inside a native tvOS WebView via a separate companion app at [`greglamb/mkc-arcade-kiosk-tvos`](https://github.com/greglamb/mkc-arcade-kiosk-tvos) (out of scope for this repo).
-
 ## Further reading
 
-- [`mkc-arcade-kiosk-SPEC.md`](mkc-arcade-kiosk-SPEC.md) — full architectural spec
-- [`overrides/README.md`](overrides/README.md) — override-system mechanics + game-adding workflow
-- [`docs/goodvibes/specs/`](docs/goodvibes/specs/) — per-feature design docs
-- [`CHANGELOG.md`](CHANGELOG.md) — user-facing changes per release
-- [`TODO.md`](TODO.md) — open work and tech debt
+- [`HANDOFF-TVOS.md`](HANDOFF-TVOS.md) — cross-repo handoff covering iframe-nesting discovery, gamepad protocol contract, sub-frame keyboard synthesis, and Apple TV debugging workflow. Read before touching `native-gamepad-bridge.js`.
+- [`mkc-arcade-kiosk-SPEC.md`](mkc-arcade-kiosk-SPEC.md) — original architectural spec.
+- [`overrides/README.md`](overrides/README.md) — override-system mechanics + game-adding workflow.
+- [`docs/goodvibes/specs/`](docs/goodvibes/specs/) — per-feature design docs.
+- [`CHANGELOG.md`](CHANGELOG.md) — user-facing changes per release.
+- [`TODO.md`](TODO.md) — open work and tech debt.
 
 ## License
 
