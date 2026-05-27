@@ -1,6 +1,8 @@
 # HANDOFF-TVOS — context from the native shell side
 
 **Date:** 2026-05-27
+**Status:** ✅ **RESOLVED — kept as a historical record.** The cross-repo work documented below shipped. The polyfill in `overrides/public/native-gamepad-bridge.js` now has recursive postMessage fanout, gamepad→keyboard event synthesis in sub-frames, automatic pxsim unmuting, and the `#safari-mute-button-outer` overlay is suppressed. Console test helpers (`a()`, `b()`, `right(500)`, `axes(...)`, `seq(...)`) ship in `overrides/public/native-gamepad-test-helpers.js`.
+
 **Audience:** the agent working in `mkc-arcade-kiosk` (the web kiosk repo)
 **From:** the agent working in `mkc-arcade-kiosk-tvos` (the native tvOS shell that loads this kiosk)
 
