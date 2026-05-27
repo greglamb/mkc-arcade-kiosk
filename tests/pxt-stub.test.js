@@ -108,4 +108,27 @@ describe('pxt-stub', () => {
     expect(errSpy).toHaveBeenCalled();
     errSpy.mockRestore();
   });
+
+  describe('BrowserUtils namespace', () => {
+    test('isLocalHost() returns false', () => {
+      loadStub();
+      expect(typeof window.pxt.BrowserUtils.isLocalHost).toBe('function');
+      expect(window.pxt.BrowserUtils.isLocalHost()).toBe(false);
+    });
+  });
+
+  describe('Utils namespace', () => {
+    test('escapeForRegex aliases the existing Util.escapeForRegex', () => {
+      loadStub();
+      expect(typeof window.pxt.Utils.escapeForRegex).toBe('function');
+      expect(window.pxt.Utils.escapeForRegex).toBe(
+        window.pxt.Util.escapeForRegex
+      );
+    });
+
+    test('Utils.escapeForRegex escapes regex metacharacters correctly', () => {
+      loadStub();
+      expect(window.pxt.Utils.escapeForRegex('a.b*c')).toBe('a\\.b\\*c');
+    });
+  });
 });

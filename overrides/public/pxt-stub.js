@@ -102,5 +102,14 @@
     },
   };
 
+  // Kiosk source uses pxt.BrowserUtils.isLocalHost — the carousel runs on
+  // GitHub Pages or file:// in the tvOS shell, never localhost-only.
+  window.pxt.BrowserUtils = { isLocalHost: function () { return false; } };
+
+  // Kiosk source uses pxt.Utils (plural). Alias to the singular Util that
+  // the SPEC §4.10 stub already provides. Extend this namespace when T17
+  // surfaces additional Utils.* references.
+  window.pxt.Utils = { escapeForRegex: window.pxt.Util.escapeForRegex };
+
   if (DEBUG) console.log('[pxt-stub] installed');
 })();
