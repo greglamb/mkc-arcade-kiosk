@@ -39,6 +39,19 @@ jobs:
         working-directory: vendor/pxt/kiosk
         run: npm ci
 
+      - name: Stage react family at vendor/pxt root
+        # Upstream pxt's monorepo expects react+react-dom to live at the
+        # vendor/pxt/ root, not in kiosk/node_modules. kiosk's package.json
+        # references @types/react via file:../node_modules/@types/react.
+        # --ignore-scripts dodges the leveldown native-compile failure that
+        # would otherwise sink the install. See TODO Tech Debt #3 history.
+        working-directory: vendor/pxt
+        run: |
+          npm install --no-save --no-audit --no-fund --no-package-lock \
+            --ignore-scripts \
+            react@^18 react-dom@^18 \
+            @types/react @types/react-dom
+
       - name: Build kiosk
         working-directory: vendor/pxt/kiosk
         env:
