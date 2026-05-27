@@ -4,8 +4,8 @@
 
 <!-- Actively queued work. Items here should be ready to start. -->
 
-- [2026-05-26] Hand-off remaining: smoke test + first tag
-  Detail: v1 is LIVE at https://greglamb.github.io/mkc-arcade-kiosk/ — repo wired up, Pages enabled (build_type=workflow), two consecutive deploys green (`bec82d6` and `ccf582b`). Carousel currently has Starfox + Space Destroyer. Remaining user actions: (a) open URL in Chrome, pair Xbox/PS5 controller via Bluetooth, smoke test carousel cycle + A-launches-game + Back-returns + WASD/arrow-key keyboard fallback, (b) verify `?mkcDebug=1` shows `[pxt-stub]` log lines + `window.__pxtStubStats`, (c) `git tag -a "v0.2605.2601" -m "Initial release" && git push origin --tags`, (d) revisit deferred project-standards promotions in Someday/Maybe.
+- [2026-05-26] Hand-off remaining: hardware smoke test + (optional) GitHub Release page
+  Detail: v1 shipped — tag `v0.2605.2601` pushed at commit `9db62a6`, six consecutive deploys green, live at https://greglamb.github.io/mkc-arcade-kiosk/ with Starfox (share `S33849-24922-26975-56296`) + Space Destroyer (share `50225-04801-24334-14778`) both confirmed working (browser console clean of the useReducer + 404 errors that broke deploys 4–5). Remaining: (a) hardware smoke test — pair Xbox/PS5 controller via Bluetooth and verify carousel cycle + A-launches + Back-returns + WASD/arrow-key fallback, (b) verify `?mkcDebug=1` shows `[pxt-stub]` console lines + `window.__pxtStubStats`, (c) (optional) `gh release create v0.2605.2601 --notes-from-tag` to surface the CHANGELOG content on the Releases page, (d) revisit deferred project-standards promotions in Someday/Maybe.
 
 - [2026-05-26] T17 iteration discovered 3 more pxt.* symbols — see commit `13068fd`
   Detail: Build clean required adding `lf` global, `pxt.BrowserUtils.isMobile`, and `pxt.Cloud.JsonScript` type — plus loosening index signatures on `TargetBundle`/`WebConfig`/`TargetConfig` from `unknown` to `any` (kiosk reads arbitrary properties off bundles). Documented for future Dependabot bump review. This is exactly the "1–3 symbols may surface" prediction from the design's risk table — design held.
