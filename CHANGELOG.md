@@ -14,10 +14,12 @@ the full rules.
 
 ### Added
 
-- Starfox (from `gigglyparrot/starfox`) replaces the placeholder slot in the carousel.
+- Starfox (from `gigglyparrot/starfox`) joins the carousel.
 
 ### Changed
 
 ### Fixed
 
 ### Removed
+
+- Bunny Hop, Hot Air Balloon, and Falling Duck are no longer in the carousel — the kiosk now ships with just two games (Starfox and Space Destroyer).

@@ -12,24 +12,6 @@
       "name": "Space Destroyer",
       "description": "Use the lasers on your spaceship to shoot falling asteroids!",
       "highScoreMode": "SingleAscending"
-    },
-    {
-      "id": "91201-59331-72477-53174",
-      "name": "Bunny Hop!",
-      "description": "Help your bunny hop over obstacles as they run through the forest",
-      "highScoreMode": "SingleAscending"
-    },
-    {
-      "id": "27640-75402-47530-91242",
-      "name": "Hot Air Balloon",
-      "description": "Navigate your hot air balloon through the mountains avoiding birds and spaceships",
-      "highScoreMode": "SingleAscending"
-    },
-    {
-      "id": "96744-30917-11312-43375",
-      "name": "Falling Duck",
-      "description": "Fly through the sky avoiding obstacles",
-      "highScoreMode": "None"
     }
   ]
 }
