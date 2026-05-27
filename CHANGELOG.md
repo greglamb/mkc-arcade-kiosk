@@ -21,7 +21,7 @@ the full rules.
 
 ### Fixed
 
-- Gamepad input now drives the actual game running inside the simulator iframe when the kiosk is loaded in a native shell (e.g. the `mkc-arcade-kiosk-tvos` Apple TV app). The bridge previously polyfilled `navigator.getGamepads()` only on the parent kiosk page, so controller input drove the carousel but went dead the moment a game launched. It now installs in every frame, recursively forwards updates across all nested simulator iframes (the pxt simulator nests two iframes deep), and synthesizes the keyboard events the game runtime actually listens for.
+- Gamepad input now drives the actual game running inside the simulator iframe when the kiosk is loaded in a native shell (e.g. the `mkc-arcade-kiosk-tvos` Apple TV app). The bridge previously polyfilled `navigator.getGamepads()` only on the parent kiosk page, so controller input drove the carousel but went dead the moment a game launched. It now installs in every frame, recursively forwards updates across all nested simulator iframes (the pxt simulator nests two iframes deep), and synthesizes the keyboard events the game runtime actually listens for. The left analog stick now drives the same direction keys as the D-pad too.
 - MakeCode game audio plays automatically when a game starts. The MakeCode editor wrapper mutes the simulator by default to comply with browser autoplay policies; the bridge now flips that flag programmatically and hides the wrapper's Safari-specific "click to unmute" overlay so it doesn't sit as a confusing red icon over the game.
 
 ### Removed

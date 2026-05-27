@@ -118,6 +118,13 @@
 
   var prevPressed = new Array(17).fill(false);
 
+  // Left analog stick contributes to D-pad direction (buttons 12-15) via a
+  // deadzone matching the threshold the kiosk's GamepadManager uses for
+  // carousel navigation. Either dpad button OR stick past the threshold
+  // counts as "this direction is pressed" — so users can hold both inputs
+  // simultaneously and only one keydown/keyup pair fires per real press.
+  var STICK_DEADZONE = 0.5;
+
   function fireKey(type, mapping) {
     var ev = new KeyboardEvent(type, {
       key: mapping.key,
@@ -133,10 +140,27 @@
   }
 
   function syncKeysFromPad(pad) {
+    if (!pad) {
+      for (var k = 0; k < 17; k++) {
+        if (BUTTON_KEYS[k] && prevPressed[k]) {
+          fireKey('keyup', BUTTON_KEYS[k]);
+          prevPressed[k] = false;
+        }
+      }
+      return;
+    }
+    var ax0 = pad.axes[0] || 0;
+    var ax1 = pad.axes[1] || 0;
+    var directional = {
+      12: pad.buttons[12].pressed || ax1 < -STICK_DEADZONE,  // Up
+      13: pad.buttons[13].pressed || ax1 >  STICK_DEADZONE,  // Down (W3C +Y DOWN)
+      14: pad.buttons[14].pressed || ax0 < -STICK_DEADZONE,  // Left
+      15: pad.buttons[15].pressed || ax0 >  STICK_DEADZONE,  // Right
+    };
     for (var i = 0; i < 17; i++) {
       var mapping = BUTTON_KEYS[i];
       if (!mapping) continue;
-      var nowPressed = pad ? pad.buttons[i].pressed : false;
+      var nowPressed = (i in directional) ? !!directional[i] : pad.buttons[i].pressed;
       if (nowPressed && !prevPressed[i]) {
         fireKey('keydown', mapping);
       } else if (!nowPressed && prevPressed[i]) {
