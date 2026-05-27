@@ -1,8 +1,8 @@
 {
-  "_comment": "Game list for the MakeCode Arcade Kiosk. Three id formats supported: (1) 20-digit share id e.g. '50225-04801-24334-14778', (2) persistent share id e.g. '_aBcDeF', (3) GitHub repo path e.g. 'greglamb/elliots-game' optionally with #ref suffix like 'greglamb/elliots-game#v1.0'. Replace the placeholder entries with Elliot's actual GitHub repos.",
+  "_comment": "Game list for the MakeCode Arcade Kiosk. Three MakeCode share-id formats supported: (1) 20-digit numeric e.g. '50225-04801-24334-14778', (2) S-prefix e.g. 'S33849-24922-26975-56296', (3) persistent share id e.g. '_aBcDeF'. Get share IDs by opening a game on arcade.makecode.com and clicking Share. (GitHub repo paths are NOT supported at runtime — to use a GitHub-hosted game, import it into MakeCode Arcade and share to get a share ID.)",
   "games": [
     {
-      "id": "gigglyparrot/starfox",
+      "id": "S33849-24922-26975-56296",
       "name": "Starfox",
       "description": "Pilot the Arwing through space and shoot enemy fighters",
       "highScoreMode": "SingleAscending"

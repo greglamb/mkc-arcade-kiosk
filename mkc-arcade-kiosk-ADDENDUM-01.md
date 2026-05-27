@@ -2,7 +2,7 @@
 
 **Addendum to:** `mkc-arcade-kiosk-SPEC.md`
 **Date:** 2026-05-26
-**Status:** Required — implement alongside the base spec.
+**Status:** **SUPERSEDED 2026-05-26 evening.** Schema validation for GitHub repo paths was implemented and shipped, but the kiosk's runtime URL builder doesn't translate `org/repo` into a runnable MakeCode URL — the addendum's third id format failed at game launch (404 from arcade.makecode.com). Rolled back: `games.json` now accepts only the three MakeCode share-id formats (20-digit, S-prefix, persistent). To use a GitHub-hosted game, import it into MakeCode Arcade, share to get a share ID, and use that. See TODO.md Tech Debt and `overrides/README.md` for the current state.
 **Applies to:** `greglamb/mkc-arcade-kiosk` only. The tvOS repo is unaffected.
 
 ---

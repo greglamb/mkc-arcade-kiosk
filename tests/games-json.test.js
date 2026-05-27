@@ -7,15 +7,18 @@ const gamesJson = JSON.parse(
   fs.readFileSync(path.join(__dirname, '..', 'overrides', 'games.json'), 'utf8')
 );
 
-// Three permitted id formats per ADDENDUM-01
+// Three permitted MakeCode share-id formats. GitHub repo paths were dropped
+// from games.json after the first deploy revealed the kiosk's runtime URL
+// builder doesn't translate `org/repo` into a runnable MakeCode URL — see
+// commit history around 2026-05-26 for the rollback rationale.
 const SHARE_ID_20DIGIT = /^\d{5}-\d{5}-\d{5}-\d{5}$/;
+const SHARE_ID_S_PREFIX = /^S\d{5}-\d{5}-\d{5}-\d{5}$/;
 const SHARE_ID_PERSISTENT = /^_[a-zA-Z0-9]+$/;
-const GITHUB_REPO = /^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?\/[a-zA-Z0-9._-]+(?:#[\w./-]+)?$/;
 
 function isValidId(id) {
   return SHARE_ID_20DIGIT.test(id)
-      || SHARE_ID_PERSISTENT.test(id)
-      || GITHUB_REPO.test(id);
+      || SHARE_ID_S_PREFIX.test(id)
+      || SHARE_ID_PERSISTENT.test(id);
 }
 
 describe('overrides/games.json', () => {
@@ -38,13 +41,11 @@ describe('overrides/games.json', () => {
     expect(isValidId(game.id)).toBe(true);
   });
 
-  test('contains at least one fallback share-id game', () => {
-    // Belt-and-suspenders: ensure if all GitHub-backed games break,
-    // there's still SOMETHING to play. If you intentionally want to disable
-    // this guard, comment it out with a note — don't just delete it.
-    const hasShareId = gamesJson.games.some(g =>
-      SHARE_ID_20DIGIT.test(g.id) || SHARE_ID_PERSISTENT.test(g.id)
-    );
-    expect(hasShareId).toBe(true);
+  test('every game id is a MakeCode share ID (no GitHub repo paths)', () => {
+    // The kiosk's runtime URL builder treats id as a share ID, so non-share
+    // formats fail at launch (404 from arcade.makecode.com/api/<id>/text).
+    // Guard against accidentally re-adding github-style ids.
+    const hasGithubPath = gamesJson.games.some(g => g.id.includes('/'));
+    expect(hasGithubPath).toBe(false);
   });
 });

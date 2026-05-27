@@ -9,59 +9,51 @@ the submodule is bumped.
 
 - `public/native-gamepad-bridge.js` — gamepad API polyfill for native shells
 - `public/pxt-stub.js` — replaces the upstream `pxt` global, serves games.json
+- `src/index.tsx` — no-telemetry kiosk bootstrap (replaces upstream's React mount)
+- `src/pxt.d.ts` — ambient TypeScript declarations for the `pxt` global
+- `tsconfig.paths.json` — pins react/react-dom to a single instance via aliases
 - `games.json` — the kiosk's game list (THE file you edit most often)
 
 ## Adding a game
 
-You have two options.
-
-### Option A: From a GitHub-synced game (preferred for our games)
-
-1. In MakeCode Arcade, open the game and use the GitHub icon to sync to a repo
-2. The repo is public on GitHub (e.g., `greglamb/elliots-space-game`)
-3. Add an entry to `games.json` using the repo path as the `id`:
-
-   ```json
-   {
-     "id": "greglamb/elliots-space-game",
-     "name": "Elliot's Space Adventure",
-     "description": "Elliot's first game",
-     "highScoreMode": "SingleAscending"
-   }
-   ```
-
-4. Optionally pin to a tag or branch: `"id": "greglamb/elliots-space-game#v1.0"`.
-   Without a suffix, the kiosk fetches the latest commit on the default branch
-   every time the game is launched.
-
-5. Commit and push `games.json`. The Pages workflow rebuilds automatically.
-
-### Option B: From a share link (for community games or one-offs)
-
-1. Open the game on [arcade.makecode.com](https://arcade.makecode.com)
-2. Click **Share**, give it a title, click **Share Project**
-3. Copy the share ID from the URL (after `arcade.makecode.com/`):
-   - 20-digit format: `12345-67890-12345-67890`
-   - Persistent format: `_aBcDeF`
+1. Open the game on [arcade.makecode.com](https://arcade.makecode.com).
+2. Click **Share**, give it a title, click **Share Project**.
+3. Copy the share ID from the URL (after `arcade.makecode.com/`). Three formats
+   are accepted by `games.json`:
+   - 20-digit numeric: `12345-67890-12345-67890`
+   - S-prefix: `S12345-67890-12345-67890`
+   - Persistent (underscore-prefix): `_aBcDeF`
 4. Add an entry to `games.json`:
 
    ```json
    {
-     "id": "12345-67890-12345-67890",
+     "id": "S12345-67890-12345-67890",
      "name": "Display name",
-     "description": "One-sentence description",
+     "description": "One-sentence description.",
      "highScoreMode": "SingleAscending"
    }
    ```
 
-5. Commit and push.
+5. `highScoreMode` is `"SingleAscending"` (higher = better) or `"None"`.
+6. Commit and push `games.json`. The Pages workflow rebuilds automatically.
 
-### Choosing between A and B
+### What about GitHub repos?
 
-- **Use A (GitHub repo)** if the game is one you can edit. The kiosk always
-  loads the latest version. No need to re-share after every change.
-- **Use B (share ID)** if the game is one you can't or don't want to track
-  in your own repos (community games, MakeCode defaults).
+GitHub-hosted MakeCode projects (e.g. `gigglyparrot/starfox`) are NOT
+directly playable from `games.json` at runtime — the kiosk's URL builder
+passes the id straight to `arcade.makecode.com/api/<id>/text`, and that
+endpoint only resolves share IDs.
+
+To use a GitHub-hosted game:
+
+1. Open [arcade.makecode.com](https://arcade.makecode.com).
+2. Click **Import** → **Import URL**, paste the GitHub repo URL, click Import.
+3. Wait for MakeCode to build the project.
+4. Click **Share** → **Share Project** to get a share ID.
+5. Use that share ID in `games.json` (per the steps above).
+
+If you really want to skip the import-and-share step for GitHub games, the
+kiosk would need a runtime URL translator (see TODO.md Tech Debt).
 
 ## Removing a game
 
