@@ -64,14 +64,19 @@ cp -f "$ROOT/overrides/src/State/AppStateContext.tsx" "$KIOSK/src/State/AppState
 echo "==> Copying tsconfig.paths.json override (pins single React instance)"
 cp -f "$ROOT/overrides/tsconfig.paths.json" "$KIOSK/tsconfig.paths.json"
 
-echo "==> Patching config.json GamepadPollLoopMilli (50ms -> 16ms for ~60Hz input)"
-# At the kiosk default of 50ms the worst-case button-press latency is ~50ms,
-# which feels sluggish on a fast game controller. 16ms aligns with a 60Hz
-# display refresh and matches what browser games typically poll at.
+echo "==> Patching config.json gamepad timing (poll 16ms, on-down 150ms, on-held 80ms)"
+# Defaults felt sluggish:
+#   GamepadPollLoopMilli (50ms)             -> 16ms     ~60Hz polling matches display refresh
+#   GamepadOnDownCooldownMilli (250ms)      -> 150ms    initial press-to-repeat delay
+#   GamepadOnHeldCooldownMilli (167ms ~6Hz) -> 80ms     ~12Hz scroll-while-held
+# Together: a held d-pad direction starts repeating in 150ms and scrolls
+# roughly twice as fast as the upstream default.
 node -e "
   const f = '$KIOSK/src/config.json';
   const c = require(f);
-  c.GamepadPollLoopMilli = 16;
+  c.GamepadPollLoopMilli       = 16;
+  c.GamepadOnDownCooldownMilli = 150;
+  c.GamepadOnHeldCooldownMilli = 80;
   require('fs').writeFileSync(f, JSON.stringify(c, null, 4) + '\n');
 "
 
