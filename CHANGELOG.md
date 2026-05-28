@@ -14,6 +14,8 @@ the full rules.
 
 ### Added
 
+- Bear Adventure (`S95945-29871-05432-20571`) added to the carousel — made by Arlo and Elliot.
+
 ### Changed
 
 - Starfox's description now credits Elliot as the author and drops the Arwing reference.

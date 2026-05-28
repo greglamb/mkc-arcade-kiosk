@@ -6,6 +6,12 @@
       "name": "Starfox",
       "description": "Shoot enemy fighters in space! Made by Elliot.",
       "highScoreMode": "SingleAscending"
+    },
+    {
+      "id": "S95945-29871-05432-20571",
+      "name": "Bear Adventure",
+      "description": "Made by Arlo and Elliot.",
+      "highScoreMode": "SingleAscending"
     }
   ]
 }
