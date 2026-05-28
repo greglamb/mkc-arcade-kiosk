@@ -1,3 +1,4 @@
 [submodule "vendor/pxt"]
 	path = vendor/pxt
 	url = https://github.com/microsoft/pxt
+	ignore = dirty
