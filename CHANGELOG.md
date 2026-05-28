@@ -18,7 +18,7 @@ the full rules.
 
 ### Changed
 
-- Starfox's description now credits Elliot as the author and drops the Arwing reference.
+- Starfox renamed to **Star Eagle** on the carousel. Description still credits Elliot as the author and drops the Arwing reference.
 - Carousel navigation feels snappier on a game controller. The kiosk's "wait between first press and starting to repeat" dropped from 250 ms to 150 ms, and the held-scroll interval dropped from 167 ms (~6 scrolls/sec) to 80 ms (~12 scrolls/sec). Combined with the earlier 16 ms poll rate the controller now drives the carousel at close to native speed.
 
 ### Fixed
