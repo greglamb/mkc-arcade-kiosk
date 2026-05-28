@@ -159,3 +159,5 @@ vendor/pxt/kiosk/src/pxt.d.ts
 vendor/pxt/kiosk/src/State/State.ts
 vendor/pxt/kiosk/src/State/AppStateContext.tsx
 vendor/pxt/kiosk/tsconfig.paths.json
+
+.DS_Store
