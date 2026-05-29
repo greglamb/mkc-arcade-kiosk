@@ -18,9 +18,13 @@ function makeFakeRoot() {
   fs.mkdirSync(path.join(root, 'overrides', 'public'), { recursive: true });
   fs.mkdirSync(path.join(root, 'overrides', 'src'), { recursive: true });
   fs.mkdirSync(path.join(root, 'overrides', 'src', 'State'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'overrides', 'src', 'Services'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'overrides', 'src', 'Transforms'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'public'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src'), { recursive: true });
   fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'State'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'Services'), { recursive: true });
+  fs.mkdirSync(path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'Transforms'), { recursive: true });
 
   // Seed an empty config.json so apply-overrides.sh's `node -e "require(...)"`
   // gamepad-timing patch step has something to read. Real submodule ships
@@ -64,6 +68,14 @@ function makeFakeRoot() {
   fs.copyFileSync(
     path.join(ROOT_REAL, 'overrides', 'src', 'State', 'AppStateContext.tsx'),
     path.join(root, 'overrides', 'src', 'State', 'AppStateContext.tsx')
+  );
+  fs.copyFileSync(
+    path.join(ROOT_REAL, 'overrides', 'src', 'Services', 'SimHostService.ts'),
+    path.join(root, 'overrides', 'src', 'Services', 'SimHostService.ts')
+  );
+  fs.copyFileSync(
+    path.join(ROOT_REAL, 'overrides', 'src', 'Transforms', 'gameOver.ts'),
+    path.join(root, 'overrides', 'src', 'Transforms', 'gameOver.ts')
   );
   fs.copyFileSync(
     path.join(ROOT_REAL, 'scripts', 'apply-overrides.sh'),
@@ -294,6 +306,46 @@ describe('Source-tree override copy steps', () => {
     expect(fs.readFileSync(dest, 'utf8')).toBe(fs.readFileSync(src, 'utf8'));
   });
 
+  test('copies overrides/src/Services/SimHostService.ts to vendor/pxt/kiosk/src/Services/SimHostService.ts', () => {
+    const root = makeFakeRoot();
+    runScript(root);
+    const dest = path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'Services', 'SimHostService.ts');
+    const src = path.join(ROOT_REAL, 'overrides', 'src', 'Services', 'SimHostService.ts');
+    expect(fs.existsSync(dest)).toBe(true);
+    expect(fs.readFileSync(dest, 'utf8')).toBe(fs.readFileSync(src, 'utf8'));
+  });
+
+  test('SimHostService override suppresses runtime clobber when game configured highScoreMode="None"', () => {
+    const text = fs.readFileSync(
+      path.join(ROOT_REAL, 'overrides', 'src', 'Services', 'SimHostService.ts'),
+      'utf8'
+    );
+    // The added clause guards updateGame against running games posting
+    // a scoringType that would overwrite an operator-configured "None".
+    expect(text).toMatch(/launchedGame\.highScoreMode\s*!==\s*"None"/);
+  });
+
+  test('copies overrides/src/Transforms/gameOver.ts to vendor/pxt/kiosk/src/Transforms/gameOver.ts', () => {
+    const root = makeFakeRoot();
+    runScript(root);
+    const dest = path.join(root, 'vendor', 'pxt', 'kiosk', 'src', 'Transforms', 'gameOver.ts');
+    const src = path.join(ROOT_REAL, 'overrides', 'src', 'Transforms', 'gameOver.ts');
+    expect(fs.existsSync(dest)).toBe(true);
+    expect(fs.readFileSync(dest, 'utf8')).toBe(fs.readFileSync(src, 'utf8'));
+  });
+
+  test('gameOver override compares highScoreMode case-insensitively', () => {
+    const text = fs.readFileSync(
+      path.join(ROOT_REAL, 'overrides', 'src', 'Transforms', 'gameOver.ts'),
+      'utf8'
+    );
+    const code = text.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    // New form matches pxt-common-packages' lowercase scoringType.
+    expect(code).toMatch(/highScoreMode\?\.toLowerCase\(\)\s*!==\s*"none"/);
+    // Upstream strict-case form must be gone (the bug).
+    expect(code).not.toMatch(/highScoreMode\s*!==\s*"None"/);
+  });
+
   test('AppStateContext override defaults locked to true (URL ?locked=0 unlocks)', () => {
     const text = fs.readFileSync(
       path.join(ROOT_REAL, 'overrides', 'src', 'State', 'AppStateContext.tsx'),
@@ -349,6 +401,8 @@ describe('.gitignore', () => {
     'vendor/pxt/kiosk/src/pxt.d.ts',
     'vendor/pxt/kiosk/src/State/State.ts',
     'vendor/pxt/kiosk/src/State/AppStateContext.tsx',
+    'vendor/pxt/kiosk/src/Services/SimHostService.ts',
+    'vendor/pxt/kiosk/src/Transforms/gameOver.ts',
     'vendor/pxt/kiosk/tsconfig.paths.json',
   ])('ignores submodule destination %s', (entry) => {
     expect(text).toContain(entry);

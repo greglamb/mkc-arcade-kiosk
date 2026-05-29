@@ -61,6 +61,12 @@ cp -f "$ROOT/overrides/src/State/State.ts" "$KIOSK/src/State/State.ts"
 echo "==> Copying src/State/AppStateContext.tsx override (default locked=true)"
 cp -f "$ROOT/overrides/src/State/AppStateContext.tsx" "$KIOSK/src/State/AppStateContext.tsx"
 
+echo "==> Copying src/Services/SimHostService.ts override (honor configured 'None')"
+cp -f "$ROOT/overrides/src/Services/SimHostService.ts" "$KIOSK/src/Services/SimHostService.ts"
+
+echo "==> Copying src/Transforms/gameOver.ts override (case-insensitive 'none' check)"
+cp -f "$ROOT/overrides/src/Transforms/gameOver.ts" "$KIOSK/src/Transforms/gameOver.ts"
+
 echo "==> Copying tsconfig.paths.json override (pins single React instance)"
 cp -f "$ROOT/overrides/tsconfig.paths.json" "$KIOSK/tsconfig.paths.json"
 

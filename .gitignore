@@ -158,6 +158,8 @@ vendor/pxt/kiosk/src/index.tsx
 vendor/pxt/kiosk/src/pxt.d.ts
 vendor/pxt/kiosk/src/State/State.ts
 vendor/pxt/kiosk/src/State/AppStateContext.tsx
+vendor/pxt/kiosk/src/Services/SimHostService.ts
+vendor/pxt/kiosk/src/Transforms/gameOver.ts
 vendor/pxt/kiosk/tsconfig.paths.json
 
 .DS_Store
