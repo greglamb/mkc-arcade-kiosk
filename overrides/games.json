@@ -12,6 +12,12 @@
       "name": "Bear Adventure",
       "description": "Made by Arlo and Elliot.",
       "highScoreMode": "None"
+    },
+    {
+      "id": "S07461-65917-68988-74214",
+      "name": "Robot Game",
+      "description": "Made by Elliot.",
+      "highScoreMode": "None"
     }
   ]
 }

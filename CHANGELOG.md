@@ -14,6 +14,8 @@ the full rules.
 
 ### Added
 
+- Robot Game (made by Elliot) joins the carousel.
+
 - Bear Adventure (`S95945-29871-05432-20571`) added to the carousel — made by Arlo and Elliot.
 
 ### Changed
