@@ -18,6 +18,8 @@ the full rules.
 
 ### Changed
 
+- After a game ends, the kiosk now restarts the game in place instead of showing a "Would you like to retry?" screen. The simulator iframe stays loaded and just resets — no canvas reload, no game-binary re-download. Press **Back** on the controller to exit to the carousel as usual. (High-score-tracking games are unaffected — they still route to the initials prompt.)
+
 - Starfox renamed to **Star Eagle** on the carousel. Description still credits Elliot as the author and drops the Arwing reference.
 - High-score tracking turned off for the family kiosk. Both games now have `highScoreMode: "None"`, so the carousel no longer shows the "High Scores" panel or prompts for a name on game over.
 - Carousel navigation feels snappier on a game controller. The kiosk's "wait between first press and starting to repeat" dropped from 250 ms to 150 ms, and the held-scroll interval dropped from 167 ms (~6 scrolls/sec) to 80 ms (~12 scrolls/sec). Combined with the earlier 16 ms poll rate the controller now drives the carousel at close to native speed.

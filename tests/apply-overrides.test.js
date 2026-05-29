@@ -346,6 +346,19 @@ describe('Source-tree override copy steps', () => {
     expect(code).not.toMatch(/highScoreMode\s*!==\s*"None"/);
   });
 
+  test('gameOver override sends a simulator "restart" postMessage for non-scoring games', () => {
+    const text = fs.readFileSync(
+      path.join(ROOT_REAL, 'overrides', 'src', 'Transforms', 'gameOver.ts'),
+      'utf8'
+    );
+    // In-place restart via pxtsim's simulator command instead of remounting
+    // <PlayingGame> (which would reload the iframe). Required for the "auto
+    // restart, no GameOver screen" UX.
+    expect(text).toMatch(/type:\s*["']simulator["']/);
+    expect(text).toMatch(/command:\s*["']restart["']/);
+    expect(text).toMatch(/postMessage\s*\(/);
+  });
+
   test('AppStateContext override defaults locked to true (URL ?locked=0 unlocks)', () => {
     const text = fs.readFileSync(
       path.join(ROOT_REAL, 'overrides', 'src', 'State', 'AppStateContext.tsx'),
