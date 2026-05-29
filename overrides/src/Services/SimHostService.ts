@@ -106,6 +106,7 @@ export function initialize() {
                                 if (
                                     state.launchedGameId &&
                                     scoresEntry["scoringType"] &&
+                                    launchedGame &&
                                     launchedGame.highScoreMode !== "None"
                                 ) {
                                     dispatch(Actions.updateGame(state.launchedGameId, { ...launchedGame, highScoreMode: scoresEntry["scoringType"]}));
